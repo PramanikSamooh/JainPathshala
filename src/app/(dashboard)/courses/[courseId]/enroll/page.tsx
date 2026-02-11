@@ -15,8 +15,33 @@ export default function EnrollPage() {
   const { courseId } = useParams<{ courseId: string }>();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  // Check if already enrolled — redirect to learn page
+  useEffect(() => {
+    async function checkEnrollment() {
+      try {
+        const res = await fetch(`/api/enrollments?courseId=${courseId}`);
+        if (res.ok) {
+          const data = await res.json();
+          const enrollments = data.enrollments || data;
+          const active = (Array.isArray(enrollments) ? enrollments : []).find(
+            (e: { status: string }) => e.status === "active"
+          );
+          if (active) {
+            router.replace(`/courses/${courseId}/learn`);
+            return;
+          }
+        }
+      } catch {
+        // Continue to enrollment flow
+      }
+      setChecking(false);
+    }
+    if (courseId) checkEnrollment();
+  }, [courseId, router]);
 
   // Load Razorpay script
   useEffect(() => {
@@ -111,6 +136,14 @@ export default function EnrollPage() {
       setLoading(false);
     }
   }, [courseId, router]);
+
+  if (checking) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <p className="text-[var(--muted-foreground)]">Checking enrollment...</p>
+      </div>
+    );
+  }
 
   if (success) {
     return (

@@ -31,15 +31,30 @@ export default function CourseDetailPage() {
   const router = useRouter();
   const [course, setCourse] = useState<CourseDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isEnrolled, setIsEnrolled] = useState(false);
 
   useEffect(() => {
     async function fetchCourse() {
       try {
-        const res = await fetch(`/api/courses/${courseId}`);
-        if (res.ok) {
-          setCourse(await res.json());
-        } else if (res.status === 404) {
+        const [courseRes, enrollRes] = await Promise.all([
+          fetch(`/api/courses/${courseId}`),
+          fetch(`/api/enrollments?courseId=${courseId}`),
+        ]);
+
+        if (courseRes.ok) {
+          setCourse(await courseRes.json());
+        } else if (courseRes.status === 404) {
           router.push("/courses");
+          return;
+        }
+
+        if (enrollRes.ok) {
+          const data = await enrollRes.json();
+          const enrollments = data.enrollments || data;
+          const active = (Array.isArray(enrollments) ? enrollments : []).find(
+            (e: { status: string }) => e.status === "active"
+          );
+          if (active) setIsEnrolled(true);
         }
       } catch (err) {
         console.error("Failed to fetch course:", err);
@@ -141,13 +156,23 @@ export default function CourseDetailPage() {
             )}
           </div>
 
-          <button
-            onClick={() => router.push(`/courses/${courseId}/enroll`)}
-            className="mt-4 rounded-lg px-6 py-3 text-sm font-medium text-white"
-            style={{ backgroundColor: "var(--brand-primary)" }}
-          >
-            {course.pricing.isFree ? "Enroll for Free" : "Enroll Now"}
-          </button>
+          {isEnrolled ? (
+            <button
+              onClick={() => router.push(`/courses/${courseId}/learn`)}
+              className="mt-4 rounded-lg px-6 py-3 text-sm font-medium text-white"
+              style={{ backgroundColor: "#16a34a" }}
+            >
+              Continue Learning &rarr;
+            </button>
+          ) : (
+            <button
+              onClick={() => router.push(`/courses/${courseId}/enroll`)}
+              className="mt-4 rounded-lg px-6 py-3 text-sm font-medium text-white"
+              style={{ backgroundColor: "var(--brand-primary)" }}
+            >
+              {course.pricing.isFree ? "Enroll for Free" : "Enroll Now"}
+            </button>
+          )}
         </div>
       </div>
 

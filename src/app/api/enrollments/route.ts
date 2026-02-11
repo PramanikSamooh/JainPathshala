@@ -38,11 +38,12 @@ export async function GET(request: NextRequest) {
       if (userIdFilter) {
         query = query.where("userId", "==", userIdFilter);
       }
+    }
 
-      const courseIdFilter = searchParams.get("courseId");
-      if (courseIdFilter) {
-        query = query.where("courseId", "==", courseIdFilter);
-      }
+    // courseId filter works for all roles
+    const courseIdFilter = searchParams.get("courseId");
+    if (courseIdFilter) {
+      query = query.where("courseId", "==", courseIdFilter);
     }
 
     const snap = await query.limit(100).get();
