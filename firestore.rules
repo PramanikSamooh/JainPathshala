@@ -50,9 +50,8 @@ service cloud.firestore {
     // Institutions
     // ═══════════════════════════════════════════
     match /institutions/{institutionId} {
-      allow read: if isAuthenticated() && (
-        isSuperAdmin() || belongsToInstitution(institutionId)
-      );
+      // Any authenticated user can read institution config (needed before claims are set)
+      allow read: if request.auth != null;
       allow create: if isSuperAdmin();
       allow update: if isSuperAdmin() || (
         isInstitutionAdmin() && belongsToInstitution(institutionId)
@@ -64,8 +63,9 @@ service cloud.firestore {
     // Users
     // ═══════════════════════════════════════════
     match /users/{userId} {
-      allow read: if isAuthenticated() && (
-        isOwner(userId) ||
+      // Users can always read their own doc (even before claims are set)
+      allow read: if request.auth != null && (
+        request.auth.uid == userId ||
         isSuperAdmin() ||
         (isAdminOrAbove() && belongsToInstitution(resource.data.institutionId))
       );

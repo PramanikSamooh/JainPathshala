@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     error: null,
   });
 
-  async function fetchUserData(firebaseUser: FirebaseUser) {
+  async function fetchUserData(firebaseUser: FirebaseUser, retries = 3) {
     try {
       const userDoc = await getDoc(doc(getClientDb(), "users", firebaseUser.uid));
       if (userDoc.exists()) {
@@ -43,8 +43,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           loading: false,
           error: null,
         });
-      } else {
+      } else if (retries > 0) {
         // User document not yet created (Cloud Function may be processing)
+        // Retry after a delay
+        setTimeout(() => fetchUserData(firebaseUser, retries - 1), 2000);
+      } else {
         setState({
           firebaseUser,
           userData: null,
@@ -53,13 +56,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       }
     } catch (err) {
-      console.error("Error fetching user data:", err);
-      setState({
-        firebaseUser,
-        userData: null,
-        loading: false,
-        error: "Failed to load user profile",
-      });
+      // Firestore permission error — likely new user whose claims haven't propagated yet
+      // The Cloud Function sets claims async, so retry after a delay
+      if (retries > 0) {
+        console.log("Waiting for user document to be created...");
+        setTimeout(() => fetchUserData(firebaseUser, retries - 1), 2000);
+      } else {
+        console.error("Error fetching user data:", err);
+        setState({
+          firebaseUser,
+          userData: null,
+          loading: false,
+          error: null,
+        });
+      }
     }
   }
 
