@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase/admin";
 import { FieldValue } from "firebase-admin/firestore";
 import { UserRole, ROLE_HIERARCHY } from "@shared/enums/roles";
+import { writeAuditLog } from "@/lib/audit-log";
 
 /**
  * PUT /api/users/:uid/role
@@ -60,6 +61,18 @@ export async function PUT(
       role,
       updatedAt: FieldValue.serverTimestamp(),
     });
+
+    writeAuditLog({
+      institutionId: user.institutionId,
+      userId: decoded.uid,
+      userEmail: decoded.email || "",
+      userRole: decoded.role,
+      action: "user.role_change",
+      resource: "user",
+      resourceId: uid,
+      details: { previousRole: user.role, newRole: role, targetEmail: user.email },
+      severity: "warning",
+    }, request);
 
     return NextResponse.json({ uid, role });
   } catch (err) {

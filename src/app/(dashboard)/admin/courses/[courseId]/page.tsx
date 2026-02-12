@@ -2,6 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import RichTextEditor from "@/components/RichTextEditor";
+
+interface InstructorOption {
+  uid: string;
+  displayName: string;
+  email: string;
+}
 
 interface CourseDetail {
   id: string;
@@ -9,11 +16,13 @@ interface CourseDetail {
   slug: string;
   description: string;
   shortDescription: string;
+  thumbnailUrl: string;
   type: string;
   skillLevel: string;
   language: string;
   status: string;
   tags: string[];
+  instructorIds: string[];
   enrollmentCount: number;
   pricing: {
     amount: number;
@@ -39,12 +48,18 @@ export default function AdminCourseEditPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [instructors, setInstructors] = useState<InstructorOption[]>([]);
+  const [selectedInstructors, setSelectedInstructors] = useState<string[]>([]);
 
   useEffect(() => {
     async function fetchCourse() {
       try {
         const res = await fetch(`/api/courses/${courseId}`);
-        if (res.ok) setCourse(await res.json());
+        if (res.ok) {
+          const data = await res.json();
+          setCourse(data);
+          setSelectedInstructors(data.instructorIds || []);
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -52,7 +67,18 @@ export default function AdminCourseEditPage() {
       }
     }
 
+    async function fetchInstructors() {
+      try {
+        const res = await fetch("/api/users?role=instructor");
+        if (res.ok) {
+          const data = await res.json();
+          setInstructors(data.users || []);
+        }
+      } catch { /* ignore */ }
+    }
+
     if (courseId) fetchCourse();
+    fetchInstructors();
   }, [courseId]);
 
   async function handleSave() {
@@ -69,10 +95,12 @@ export default function AdminCourseEditPage() {
           slug: course.slug,
           description: course.description,
           shortDescription: course.shortDescription,
+          thumbnailUrl: course.thumbnailUrl,
           type: course.type,
           skillLevel: course.skillLevel,
           language: course.language,
           tags: course.tags,
+          instructorIds: selectedInstructors,
           pricing: course.pricing,
         }),
       });
@@ -240,11 +268,10 @@ export default function AdminCourseEditPage() {
             </div>
             <div className="sm:col-span-2">
               <label className="block text-sm font-medium">Full Description</label>
-              <textarea
-                rows={4}
+              <RichTextEditor
                 value={course.description}
-                onChange={(e) => setCourse({ ...course, description: e.target.value })}
-                className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                onChange={(html) => setCourse({ ...course, description: html })}
+                placeholder="Detailed course description..."
               />
             </div>
             <div className="sm:col-span-2">
@@ -264,6 +291,66 @@ export default function AdminCourseEditPage() {
                 className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
               />
             </div>
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium">
+                Thumbnail URL{" "}
+                <span className="font-normal text-[var(--muted-foreground)]">(optional)</span>
+              </label>
+              <input
+                type="url"
+                value={course.thumbnailUrl || ""}
+                onChange={(e) => setCourse({ ...course, thumbnailUrl: e.target.value })}
+                placeholder="https://example.com/course-image.jpg"
+                className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+              />
+              {course.thumbnailUrl && (
+                <div className="mt-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={course.thumbnailUrl}
+                    alt="Thumbnail preview"
+                    className="h-24 w-auto rounded-lg border border-[var(--border)] object-cover"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* Instructor Assignment */}
+        <section className="rounded-lg border border-[var(--border)] p-4">
+          <h2 className="font-semibold">Assigned Instructors</h2>
+          <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+            Select instructors who can manage this course
+          </p>
+          <div className="mt-3 space-y-2">
+            {instructors.length === 0 ? (
+              <p className="text-sm text-[var(--muted-foreground)]">No instructors found.</p>
+            ) : (
+              instructors.map((inst) => (
+                <label key={inst.uid} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedInstructors.includes(inst.uid)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedInstructors((prev) => [...prev, inst.uid]);
+                      } else {
+                        setSelectedInstructors((prev) => prev.filter((id) => id !== inst.uid));
+                      }
+                    }}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-sm">
+                    {inst.displayName || inst.email}
+                    {inst.displayName && (
+                      <span className="ml-1 text-[var(--muted-foreground)]">({inst.email})</span>
+                    )}
+                  </span>
+                </label>
+              ))
+            )}
           </div>
         </section>
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
+import RichTextEditor from "@/components/RichTextEditor";
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -517,12 +518,11 @@ export default function ModulesPage() {
             <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">
               Description
             </label>
-            <textarea
-              rows={2}
+            <RichTextEditor
               value={moduleForm.description}
-              onChange={(e) => setModuleForm({ ...moduleForm, description: e.target.value })}
+              onChange={(html) => setModuleForm({ ...moduleForm, description: html })}
               placeholder="Module description (optional)"
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+              minHeight="60px"
             />
           </div>
           <button
@@ -815,15 +815,13 @@ export default function ModulesPage() {
                           <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">
                             Content
                           </label>
-                          <textarea
-                            rows={6}
-                            required
+                          <RichTextEditor
                             value={lessonForm.textContent || ""}
-                            onChange={(e) =>
-                              setLessonForm({ ...lessonForm, textContent: e.target.value })
+                            onChange={(html) =>
+                              setLessonForm({ ...lessonForm, textContent: html })
                             }
-                            placeholder="Lesson text content (Markdown supported)"
-                            className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm font-mono"
+                            placeholder="Lesson text content..."
+                            minHeight="150px"
                           />
                         </div>
                       )}
@@ -921,21 +919,19 @@ export default function ModulesPage() {
                             <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">
                               Instructions
                             </label>
-                            <textarea
-                              rows={3}
-                              required
+                            <RichTextEditor
                               value={lessonForm.assignmentConfig.instructions}
-                              onChange={(e) =>
+                              onChange={(html) =>
                                 setLessonForm({
                                   ...lessonForm,
                                   assignmentConfig: {
                                     ...lessonForm.assignmentConfig!,
-                                    instructions: e.target.value,
+                                    instructions: html,
                                   },
                                 })
                               }
-                              placeholder="Assignment instructions"
-                              className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                              placeholder="Assignment instructions..."
+                              minHeight="80px"
                             />
                           </div>
                           <div>

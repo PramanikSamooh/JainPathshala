@@ -2,6 +2,34 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import VideoPlayer from "@/components/VideoPlayer";
+import CheckpointOverlay from "@/components/CheckpointOverlay";
+import { useVideoProgress } from "@/hooks/useVideoProgress";
+
+interface VideoCheckpoint {
+  id: string;
+  timestampSeconds: number;
+  question: {
+    type: string;
+    questionText: string;
+    options: { id: string; text: string }[];
+    correctOptionId: string | null;
+    correctAnswer: string | null;
+    explanation: string;
+  };
+  isRequired: boolean;
+}
+
+interface VideoConfig {
+  videoUrl: string;
+  videoDurationSeconds: number;
+  videoSource: string;
+  youtubeVideoId: string | null;
+  driveFileId: string | null;
+  gcsPath: string | null;
+  checkpoints: VideoCheckpoint[];
+  requireFullWatch: boolean;
+}
 
 interface Lesson {
   id: string;
@@ -10,6 +38,7 @@ interface Lesson {
   textContent?: string;
   estimatedMinutes: number;
   order: number;
+  videoConfig?: VideoConfig | null;
 }
 
 interface Module {
@@ -58,6 +87,21 @@ export default function LearnPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [marking, setMarking] = useState(false);
+  const [activeCheckpoint, setActiveCheckpoint] = useState<VideoCheckpoint | null>(null);
+
+  // Video progress tracking
+  const {
+    videoProgress,
+    updateProgress,
+    startSegment,
+    endSegment,
+    markVideoCompleted,
+    recordCheckpoint,
+  } = useVideoProgress({
+    lessonId: activeLesson?.id ?? null,
+    moduleId: activeModuleId,
+    courseId,
+  });
 
   // Find the module that contains a lesson
   const findModuleForLesson = useCallback(
@@ -216,10 +260,17 @@ export default function LearnPage() {
 
   // Navigate to a lesson and auto-mark current one as complete
   function navigateToLesson(lesson: Lesson) {
-    // Mark current lesson as complete when navigating away
     if (activeLesson && !completedLessonIds.has(activeLesson.id)) {
-      markLessonComplete(activeLesson);
+      // For video lessons with requireFullWatch, only auto-mark if watched enough
+      if (activeLesson.type === "video" && activeLesson.videoConfig?.requireFullWatch) {
+        if (videoProgress && videoProgress.watchedPercentage >= 90) {
+          markLessonComplete(activeLesson);
+        }
+      } else {
+        markLessonComplete(activeLesson);
+      }
     }
+    setActiveCheckpoint(null);
     setActiveLesson(lesson);
   }
 
@@ -422,55 +473,75 @@ export default function LearnPage() {
                 ) : (
                   <button
                     onClick={() => markLessonComplete(activeLesson)}
-                    disabled={marking}
+                    disabled={
+                      marking ||
+                      (activeLesson.type === "video" &&
+                        activeLesson.videoConfig?.requireFullWatch === true &&
+                        (!videoProgress || videoProgress.watchedPercentage < 90))
+                    }
                     className="inline-flex items-center gap-1 text-xs px-3 py-1 rounded-full border border-[var(--border)] hover:bg-[var(--muted)] disabled:opacity-50"
                   >
-                    {marking ? "Saving..." : "Mark Complete"}
+                    {marking
+                      ? "Saving..."
+                      : activeLesson.type === "video" &&
+                          activeLesson.videoConfig?.requireFullWatch &&
+                          (!videoProgress || videoProgress.watchedPercentage < 90)
+                        ? `Watch ${Math.max(0, 90 - Math.round(videoProgress?.watchedPercentage ?? 0))}% more`
+                        : "Mark Complete"}
                   </button>
                 )}
               </div>
             </div>
 
             {activeLesson.type === "text" && activeLesson.textContent && (
-              <div className="prose prose-sm max-w-none rounded-xl border border-[var(--border)] bg-[var(--card)] p-6">
-                {activeLesson.textContent.split("\n").map((line, i) => {
-                  if (line.startsWith("## ")) {
-                    return (
-                      <h2 key={i} className="text-lg font-bold mt-4 mb-2">
-                        {line.replace("## ", "")}
-                      </h2>
-                    );
-                  }
-                  if (line.startsWith("- **")) {
-                    const match = line.match(/- \*\*(.+?)\*\*\s*[-–—]\s*(.+)/);
-                    if (match) {
-                      return (
-                        <p key={i} className="ml-4 mb-1">
-                          <strong>{match[1]}</strong> — {match[2]}
-                        </p>
-                      );
+              <div
+                className="prose prose-sm max-w-none rounded-xl border border-[var(--border)] bg-[var(--card)] p-6"
+                dangerouslySetInnerHTML={{ __html: activeLesson.textContent }}
+              />
+            )}
+
+            {activeLesson.type === "video" && activeLesson.videoConfig && (
+              <div className="relative rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden">
+                <VideoPlayer
+                  videoConfig={activeLesson.videoConfig}
+                  initialPositionSeconds={videoProgress?.currentPositionSeconds ?? 0}
+                  onTimeUpdate={updateProgress}
+                  onPlay={startSegment}
+                  onPause={endSegment}
+                  onCheckpointReached={(cp) => setActiveCheckpoint(cp)}
+                  onVideoComplete={() => {
+                    markVideoCompleted();
+                    if (activeLesson && !completedLessonIds.has(activeLesson.id)) {
+                      markLessonComplete(activeLesson);
                     }
-                  }
-                  if (line.match(/^\d+\.\s\*\*/)) {
-                    const match = line.match(/^\d+\.\s\*\*(.+?)\*\*\s*[-–—]\s*(.+)/);
-                    if (match) {
-                      return (
-                        <p key={i} className="ml-4 mb-1">
-                          <strong>{match[1]}</strong> — {match[2]}
-                        </p>
-                      );
-                    }
-                  }
-                  if (line.trim() === "") return <br key={i} />;
-                  return <p key={i} className="mb-2">{line}</p>;
-                })}
+                  }}
+                  checkpointResponses={videoProgress?.checkpointResponses ?? {}}
+                />
+                {activeCheckpoint && (
+                  <CheckpointOverlay
+                    checkpoint={activeCheckpoint}
+                    onSubmit={(response) => {
+                      recordCheckpoint(activeCheckpoint.id, response);
+                    }}
+                    onDismiss={() => setActiveCheckpoint(null)}
+                  />
+                )}
+                {/* Video progress info */}
+                {videoProgress && activeLesson.videoConfig.requireFullWatch && !completedLessonIds.has(activeLesson.id) && (
+                  <div className="px-4 py-2 text-xs text-[var(--muted-foreground)] border-t border-[var(--border)] flex items-center justify-between">
+                    <span>Watched: {Math.round(videoProgress.watchedPercentage)}%</span>
+                    {videoProgress.watchedPercentage < 90 && (
+                      <span>Watch at least 90% to complete this lesson</span>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
-            {activeLesson.type === "video" && (
+            {activeLesson.type === "video" && !activeLesson.videoConfig && (
               <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 text-center">
                 <p className="text-[var(--muted-foreground)]">
-                  Video player will be available soon.
+                  No video configured for this lesson.
                 </p>
               </div>
             )}

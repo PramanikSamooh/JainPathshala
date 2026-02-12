@@ -6,6 +6,7 @@ import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { getClientDb } from "@/lib/firebase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useInstitution } from "@/contexts/InstitutionContext";
+import PhoneInput from "@/components/PhoneInput";
 
 export default function CompleteProfilePage() {
   const { firebaseUser, userData, refreshUser } = useAuth();
@@ -91,6 +92,19 @@ export default function CompleteProfilePage() {
   return (
     <main className="flex min-h-[80vh] items-center justify-center">
       <div className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--card)] p-8">
+        {/* Google profile photo */}
+        {firebaseUser?.photoURL && (
+          <div className="flex justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={firebaseUser.photoURL}
+              alt="Profile"
+              className="h-16 w-16 rounded-full border-2 border-[var(--border)] object-cover"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+        )}
+
         <h1 className="text-xl font-bold text-[var(--card-foreground)]">
           Complete Your Profile
         </h1>
@@ -139,17 +153,14 @@ export default function CompleteProfilePage() {
             <label className="block text-sm font-medium" htmlFor="phone">
               Phone Number *
             </label>
-            <input
-              id="phone"
-              type="tel"
-              required
-              value={form.phone}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, phone: e.target.value }))
-              }
-              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-              placeholder="+91 9876543210"
-            />
+            <div className="mt-1">
+              <PhoneInput
+                id="phone"
+                required
+                value={form.phone}
+                onChange={(val) => setForm((f) => ({ ...f, phone: val }))}
+              />
+            </div>
           </div>
 
           {/* Parent/Guardian Section */}
@@ -204,16 +215,13 @@ export default function CompleteProfilePage() {
                   <label className="block text-sm font-medium" htmlFor="guardianPhone">
                     Phone {showGuardian && guardianForm.name ? "*" : ""}
                   </label>
-                  <input
-                    id="guardianPhone"
-                    type="tel"
-                    value={guardianForm.phone}
-                    onChange={(e) =>
-                      setGuardianForm((f) => ({ ...f, phone: e.target.value }))
-                    }
-                    className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-                    placeholder="+91 9876543210"
-                  />
+                  <div className="mt-1">
+                    <PhoneInput
+                      id="guardianPhone"
+                      value={guardianForm.phone}
+                      onChange={(val) => setGuardianForm((f) => ({ ...f, phone: val }))}
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium" htmlFor="guardianEmail">

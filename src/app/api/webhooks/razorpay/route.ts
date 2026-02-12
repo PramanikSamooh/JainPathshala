@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
       }
 
       default:
-        console.log(`Unhandled Razorpay event: ${eventType}`);
+        console.warn(`Unhandled Razorpay event: ${eventType}`);
     }
 
     return NextResponse.json({ status: "ok" });

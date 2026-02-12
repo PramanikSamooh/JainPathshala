@@ -54,8 +54,6 @@ export async function POST(request: NextRequest) {
 
     await batch.commit();
 
-    console.log(`Expired ${expiredIds.length} enrollments:`, expiredIds);
-
     return NextResponse.json({
       message: `Expired ${expiredIds.length} enrollments`,
       expired: expiredIds.length,

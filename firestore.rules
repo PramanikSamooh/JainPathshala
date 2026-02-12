@@ -201,7 +201,15 @@ service cloud.firestore {
     }
 
     // ═══════════════════════════════════════════
-    // Audit Logs — read by admins, write only via Cloud Functions
+    // Push Subscriptions — users manage their own
+    // ═══════════════════════════════════════════
+    match /pushSubscriptions/{userId} {
+      allow read: if isAuthenticated() && isOwner(userId);
+      allow write: if isAuthenticated() && isOwner(userId);
+    }
+
+    // ═══════════════════════════════════════════
+    // Audit Logs — read by admins, write only via Admin SDK
     // ═══════════════════════════════════════════
     match /auditLogs/{logId} {
       allow read: if isAdminOrAbove() && belongsToInstitution(resource.data.institutionId);

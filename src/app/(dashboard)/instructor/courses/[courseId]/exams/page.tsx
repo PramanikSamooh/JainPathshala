@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import RichTextEditor from "@/components/RichTextEditor";
 
 interface Exam {
   id: string;
@@ -333,11 +334,11 @@ export default function InstructorExamsPage() {
 
             <div className="sm:col-span-2">
               <label className="block text-sm font-medium">Description</label>
-              <textarea
-                rows={2}
+              <RichTextEditor
                 value={newExam.description}
-                onChange={(e) => setNewExam({ ...newExam, description: e.target.value })}
-                className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                onChange={(html) => setNewExam({ ...newExam, description: html })}
+                placeholder="Exam description..."
+                minHeight="60px"
               />
             </div>
 
@@ -432,22 +433,20 @@ export default function InstructorExamsPage() {
               <h3 className="text-sm font-medium">Manual Evaluation Configuration</h3>
               <div>
                 <label className="block text-sm">Instructions for Students</label>
-                <textarea
-                  rows={3}
+                <RichTextEditor
                   value={newExam.instructions}
-                  onChange={(e) => setNewExam({ ...newExam, instructions: e.target.value })}
-                  className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                  onChange={(html) => setNewExam({ ...newExam, instructions: html })}
                   placeholder="Describe what students need to submit..."
+                  minHeight="80px"
                 />
               </div>
               <div>
                 <label className="block text-sm">Grading Rubric</label>
-                <textarea
-                  rows={3}
+                <RichTextEditor
                   value={newExam.rubric}
-                  onChange={(e) => setNewExam({ ...newExam, rubric: e.target.value })}
-                  className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                  onChange={(html) => setNewExam({ ...newExam, rubric: html })}
                   placeholder="Describe how the submission will be graded..."
+                  minHeight="80px"
                 />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">

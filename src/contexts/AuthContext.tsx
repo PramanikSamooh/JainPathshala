@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Firestore permission error — likely new user whose claims haven't propagated yet
       // The Cloud Function sets claims async, so retry after a delay
       if (retries > 0) {
-        console.log("Waiting for user document to be created...");
+        // User doc not ready yet — Cloud Function sets claims async, retry after delay
         setTimeout(() => fetchUserData(firebaseUser, retries - 1), 2000);
       } else {
         console.error("Error fetching user data:", err);

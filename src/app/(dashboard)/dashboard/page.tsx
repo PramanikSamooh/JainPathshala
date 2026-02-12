@@ -38,16 +38,23 @@ export default function DashboardPage() {
   const { userData, loading: authLoading } = useAuth();
   const router = useRouter();
   const [enrollments, setEnrollments] = useState<EnrollmentWithCourse[]>([]);
+  const [certificateCount, setCertificateCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchDashboardData() {
       try {
-        // Single API call with course info included — no N+1 waterfall
-        const res = await fetch("/api/enrollments?include=course");
-        if (res.ok) {
-          const data = await res.json();
+        const [enrollRes, certRes] = await Promise.all([
+          fetch("/api/enrollments?include=course"),
+          fetch("/api/certificates"),
+        ]);
+        if (enrollRes.ok) {
+          const data = await enrollRes.json();
           setEnrollments(data.enrollments || []);
+        }
+        if (certRes.ok) {
+          const data = await certRes.json();
+          setCertificateCount((data.certificates || []).length);
         }
       } catch (err) {
         console.error("Failed to load dashboard data:", err);
@@ -92,7 +99,7 @@ export default function DashboardPage() {
         <DashboardCard title="Enrolled Courses" value={String(activeEnrollments.length)} />
         <DashboardCard title="Completed" value={String(completedEnrollments.length)} />
         <DashboardCard title="Avg Progress" value={`${totalProgress}%`} />
-        <DashboardCard title="Certificates" value="0" />
+        <DashboardCard title="Certificates" value={String(certificateCount)} />
       </div>
 
       {/* Quick links for admin */}

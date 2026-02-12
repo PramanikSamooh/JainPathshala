@@ -1,20 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import RichTextEditor from "@/components/RichTextEditor";
+
+interface InstructorOption {
+  uid: string;
+  displayName: string;
+  email: string;
+}
 
 export default function NewCoursePage() {
   const router = useRouter();
-  const { firebaseUser } = useAuth();
+  const { firebaseUser, userData } = useAuth();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [instructors, setInstructors] = useState<InstructorOption[]>([]);
+  const [selectedInstructors, setSelectedInstructors] = useState<string[]>([]);
 
   const [form, setForm] = useState({
     title: "",
     slug: "",
     description: "",
     shortDescription: "",
+    thumbnailUrl: "",
     type: "self_paced" as "bootcamp" | "instructor_led" | "self_paced",
     skillLevel: "beginner" as "beginner" | "intermediate" | "advanced",
     language: "en",
@@ -26,6 +36,23 @@ export default function NewCoursePage() {
       isFree: true,
     },
   });
+
+  useEffect(() => {
+    async function fetchInstructors() {
+      try {
+        const res = await fetch("/api/users?role=instructor");
+        if (res.ok) {
+          const data = await res.json();
+          setInstructors(data.users || []);
+        }
+      } catch { /* ignore */ }
+    }
+    fetchInstructors();
+    // Default: assign current user if instructor
+    if (firebaseUser?.uid && userData?.role === "instructor") {
+      setSelectedInstructors([firebaseUser.uid]);
+    }
+  }, [firebaseUser?.uid, userData?.role]);
 
   function updateField(path: string, value: string | number | boolean) {
     setForm((prev) => {
@@ -52,7 +79,7 @@ export default function NewCoursePage() {
           .map((t) => t.trim())
           .filter(Boolean),
         prerequisites: [],
-        instructorIds: [firebaseUser?.uid || ""],
+        instructorIds: selectedInstructors.length > 0 ? selectedInstructors : [firebaseUser?.uid || ""],
         pricing: {
           ...form.pricing,
           amount: form.pricing.isFree ? 0 : form.pricing.amount,
@@ -173,13 +200,10 @@ export default function NewCoursePage() {
             </div>
             <div className="sm:col-span-2">
               <label className="block text-sm font-medium">Full Description</label>
-              <textarea
-                required
-                rows={4}
+              <RichTextEditor
                 value={form.description}
-                onChange={(e) => updateField("description", e.target.value)}
+                onChange={(html) => updateField("description", html)}
                 placeholder="Detailed course description..."
-                className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
               />
             </div>
             <div className="sm:col-span-2">
@@ -195,6 +219,66 @@ export default function NewCoursePage() {
                 className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
               />
             </div>
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium">
+                Thumbnail URL{" "}
+                <span className="font-normal text-[var(--muted-foreground)]">(optional)</span>
+              </label>
+              <input
+                type="url"
+                value={form.thumbnailUrl}
+                onChange={(e) => updateField("thumbnailUrl", e.target.value)}
+                placeholder="https://example.com/course-image.jpg"
+                className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+              />
+              {form.thumbnailUrl && (
+                <div className="mt-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={form.thumbnailUrl}
+                    alt="Thumbnail preview"
+                    className="h-24 w-auto rounded-lg border border-[var(--border)] object-cover"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* Instructor Assignment */}
+        <section className="rounded-lg border border-[var(--border)] p-4">
+          <h2 className="font-semibold">Assigned Instructors</h2>
+          <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+            Select instructors who can manage this course
+          </p>
+          <div className="mt-3 space-y-2">
+            {instructors.length === 0 ? (
+              <p className="text-sm text-[var(--muted-foreground)]">No instructors found.</p>
+            ) : (
+              instructors.map((inst) => (
+                <label key={inst.uid} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedInstructors.includes(inst.uid)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedInstructors((prev) => [...prev, inst.uid]);
+                      } else {
+                        setSelectedInstructors((prev) => prev.filter((id) => id !== inst.uid));
+                      }
+                    }}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-sm">
+                    {inst.displayName || inst.email}
+                    {inst.displayName && (
+                      <span className="ml-1 text-[var(--muted-foreground)]">({inst.email})</span>
+                    )}
+                  </span>
+                </label>
+              ))
+            )}
           </div>
         </section>
 

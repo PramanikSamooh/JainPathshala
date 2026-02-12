@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase/admin";
 import { verifyPaymentSignature } from "@/lib/razorpay/verify";
 import { FieldValue } from "firebase-admin/firestore";
+import { writeAuditLog } from "@/lib/audit-log";
 
 /**
  * POST /api/payments/verify
@@ -107,6 +108,17 @@ export async function POST(request: NextRequest) {
     await db.collection("courses").doc(payment.courseId).update({
       enrollmentCount: FieldValue.increment(1),
     });
+
+    writeAuditLog({
+      institutionId: payment.institutionId,
+      userId: decoded.uid,
+      userEmail: decoded.email || "",
+      userRole: decoded.role || "student",
+      action: "payment.verified",
+      resource: "payment",
+      resourceId: paymentId,
+      details: { amount: payment.amount, courseId: payment.courseId, enrollmentId: enrollmentRef.id },
+    }, request);
 
     return NextResponse.json({
       status: "verified",

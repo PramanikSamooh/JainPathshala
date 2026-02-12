@@ -24,6 +24,7 @@ interface InstitutionDetail {
     enableSelfRegistration: boolean;
     allowExternalUsers: boolean;
     maintenanceMode: boolean;
+    locale: string;
   };
   contactInfo: {
     supportEmail: string;
@@ -188,6 +189,28 @@ export default function InstitutionEditPage() {
                 }
                 className="w-20 rounded border border-[var(--border)] px-2 py-1 text-sm"
               />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Language / Locale</span>
+              <select
+                value={inst.settings.locale || "en"}
+                onChange={(e) =>
+                  setInst({
+                    ...inst,
+                    settings: { ...inst.settings, locale: e.target.value },
+                  })
+                }
+                className="w-40 rounded border border-[var(--border)] px-2 py-1 text-sm"
+              >
+                <option value="en">English</option>
+                <option value="hi">Hindi</option>
+                <option value="kn">Kannada</option>
+                <option value="mr">Marathi</option>
+                <option value="ta">Tamil</option>
+                <option value="te">Telugu</option>
+                <option value="bn">Bengali</option>
+                <option value="gu">Gujarati</option>
+              </select>
             </div>
             {[
               { key: "enableSelfRegistration", label: "Allow self-registration" },

@@ -3,6 +3,7 @@ import { getAdminAuth, getAdminDb } from "@/lib/firebase/admin";
 import { FieldValue } from "firebase-admin/firestore";
 import { copyDriveFile, exportAsPdf, uploadToDrive, setPublicViewAccess } from "@/lib/google/drive";
 import { mergeDocTemplate } from "@/lib/google/docs";
+import { writeAuditLog } from "@/lib/audit-log";
 
 /**
  * POST /api/certificates/generate
@@ -172,6 +173,17 @@ export async function POST(request: NextRequest) {
       completedAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
+
+    writeAuditLog({
+      institutionId: enrollment.institutionId,
+      userId: decoded.uid,
+      userEmail: decoded.email || "",
+      userRole: decoded.role,
+      action: "certificate.generate",
+      resource: "certificate",
+      resourceId: certificateId,
+      details: { enrollmentId, studentName: user.displayName, courseName: course.title, grade, finalScore },
+    }, request);
 
     return NextResponse.json({
       certificateId,

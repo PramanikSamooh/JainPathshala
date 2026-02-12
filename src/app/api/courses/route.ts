@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase/admin";
 import { FieldValue } from "firebase-admin/firestore";
 import { createCourseSchema } from "@shared/validators/course.validator";
+import { writeAuditLog } from "@/lib/audit-log";
 
 /**
  * GET /api/courses
@@ -46,6 +47,11 @@ export async function GET(request: NextRequest) {
     // Students only see published courses
     if (role === "student") {
       query = query.where("status", "==", "published");
+    }
+
+    // Instructors only see their assigned courses
+    if (role === "instructor") {
+      query = query.where("instructorIds", "array-contains", decoded.uid);
     }
 
     const typeFilter = searchParams.get("type");
@@ -138,6 +144,17 @@ export async function POST(request: NextRequest) {
     };
 
     await courseRef.set(courseData);
+
+    writeAuditLog({
+      institutionId,
+      userId: decoded.uid,
+      userEmail: decoded.email || "",
+      userRole: decoded.role,
+      action: "course.create",
+      resource: "course",
+      resourceId: courseRef.id,
+      details: { title: data.title, type: data.type, slug: data.slug },
+    }, request);
 
     return NextResponse.json(courseData, { status: 201 });
   } catch (err) {

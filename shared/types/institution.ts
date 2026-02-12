@@ -33,6 +33,13 @@ export interface InstitutionSettings {
   allowExternalUsers: boolean;
   requireEmailVerification: boolean;
   maintenanceMode: boolean;
+  locale: string; // e.g. "en", "hi", "kn", "mr"
+}
+
+export interface InstitutionWhatsApp {
+  accessToken: string;
+  phoneNumberId: string;
+  businessAccountId: string;
 }
 
 export interface InstitutionContactInfo {
@@ -52,6 +59,7 @@ export interface Institution {
   branding: InstitutionBranding;
   googleWorkspace: InstitutionGoogleWorkspace;
   razorpay: InstitutionRazorpay;
+  whatsapp: InstitutionWhatsApp | null;
   settings: InstitutionSettings;
   contactInfo: InstitutionContactInfo;
   isActive: boolean;

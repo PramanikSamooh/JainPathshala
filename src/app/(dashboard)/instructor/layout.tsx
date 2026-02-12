@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -11,6 +12,30 @@ export default function InstructorLayout({
 }) {
   const { userData, loading } = useAuth();
   const pathname = usePathname();
+  const [courseTitle, setCourseTitle] = useState<string | null>(null);
+
+  // Extract courseId from pathname for sub-nav
+  const courseMatch = pathname.match(/\/instructor\/courses\/([^/]+)/);
+  const courseId = courseMatch?.[1];
+
+  useEffect(() => {
+    if (!courseId) {
+      setCourseTitle(null);
+      return;
+    }
+    async function fetchCourse() {
+      try {
+        const res = await fetch(`/api/courses/${courseId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setCourseTitle(data.title || null);
+        }
+      } catch {
+        // ignore
+      }
+    }
+    fetchCourse();
+  }, [courseId]);
 
   if (loading) {
     return <div className="text-[var(--muted-foreground)]">Loading...</div>;
@@ -26,10 +51,6 @@ export default function InstructorLayout({
     );
   }
 
-  // Extract courseId from pathname for sub-nav
-  const courseMatch = pathname.match(/\/instructor\/courses\/([^/]+)/);
-  const courseId = courseMatch?.[1];
-
   const courseNav = courseId
     ? [
         { href: `/instructor/courses/${courseId}/modules`, label: "Content" },
@@ -43,7 +64,21 @@ export default function InstructorLayout({
   return (
     <div>
       <div className="mb-4">
-        <h2 className="text-lg font-bold">Instructor Panel</h2>
+        {courseId ? (
+          <div>
+            <Link
+              href="/instructor/courses"
+              className="text-sm text-[var(--muted-foreground)] hover:underline"
+            >
+              &larr; My Courses
+            </Link>
+            <h2 className="text-lg font-bold mt-1">
+              {courseTitle || "Loading..."}
+            </h2>
+          </div>
+        ) : (
+          <h2 className="text-lg font-bold">Instructor Panel</h2>
+        )}
       </div>
 
       {courseNav.length > 0 && (
