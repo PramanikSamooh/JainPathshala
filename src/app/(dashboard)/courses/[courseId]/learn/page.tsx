@@ -26,6 +26,15 @@ interface CourseContent {
   modules: Module[];
 }
 
+interface Session {
+  id: string;
+  sessionDate: string;
+  startTime: string;
+  endTime: string;
+  topic: string;
+  meetLink: string | null;
+}
+
 interface Enrollment {
   id: string;
   status: string;
@@ -45,6 +54,7 @@ export default function LearnPage() {
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
   const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(new Set());
+  const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [marking, setMarking] = useState(false);
@@ -66,11 +76,18 @@ export default function LearnPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        // Parallel fetch: course + enrollment (saves ~500ms)
-        const [courseRes, enrollRes] = await Promise.all([
+        // Parallel fetch: course + enrollment + sessions
+        const [courseRes, enrollRes, sessionsRes] = await Promise.all([
           fetch(`/api/courses/${courseId}`),
           fetch(`/api/enrollments?courseId=${courseId}`),
+          fetch(`/api/courses/${courseId}/sessions`),
         ]);
+
+        // Parse sessions
+        if (sessionsRes.ok) {
+          const sessionsData = await sessionsRes.json();
+          setSessions(sessionsData.sessions || []);
+        }
 
         if (!courseRes.ok) {
           setError("Course not found");
@@ -278,6 +295,49 @@ export default function LearnPage() {
             />
           </div>
         </div>
+
+        {/* Live Sessions */}
+        {sessions.length > 0 && (
+          <div className="mb-4">
+            <h3 className="text-xs font-semibold uppercase text-[var(--muted-foreground)] mb-2">
+              Live Sessions
+            </h3>
+            <div className="space-y-2">
+              {sessions
+                .sort((a, b) => a.sessionDate.localeCompare(b.sessionDate))
+                .slice(0, 5)
+                .map((session) => {
+                  const sessionDate = new Date(session.sessionDate + "T" + session.startTime);
+                  const isUpcoming = sessionDate > new Date();
+                  return (
+                    <div
+                      key={session.id}
+                      className={`rounded-lg border px-3 py-2 text-xs ${
+                        isUpcoming
+                          ? "border-blue-200 bg-blue-50"
+                          : "border-[var(--border)]"
+                      }`}
+                    >
+                      <div className="font-medium">{session.topic}</div>
+                      <div className="text-[var(--muted-foreground)] mt-0.5">
+                        {session.sessionDate} &middot; {session.startTime} - {session.endTime}
+                      </div>
+                      {session.meetLink && isUpcoming && (
+                        <a
+                          href={session.meetLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-1 inline-block text-blue-600 hover:underline"
+                        >
+                          Join Meet
+                        </a>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
 
         <button
           onClick={() => router.push(`/courses/${courseId}/exams`)}

@@ -17,6 +17,14 @@ export default function CompleteProfilePage() {
     phone: userData?.phone || "",
     consent: false,
   });
+  const [showGuardian, setShowGuardian] = useState(false);
+  const [guardianForm, setGuardianForm] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    address: "",
+    relation: "father",
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,14 +56,27 @@ export default function CompleteProfilePage() {
 
     try {
       const db = getClientDb();
-      await updateDoc(doc(db, "users", firebaseUser.uid), {
+      const updateData: Record<string, unknown> = {
         displayName: form.displayName.trim(),
         phone: form.phone.trim(),
         consentGiven: true,
         consentGivenAt: serverTimestamp(),
         profileComplete: true,
         updatedAt: serverTimestamp(),
-      });
+      };
+
+      // Include parent/guardian info if provided
+      if (showGuardian && guardianForm.name.trim() && guardianForm.phone.trim()) {
+        updateData.parentGuardian = {
+          name: guardianForm.name.trim(),
+          phone: guardianForm.phone.trim(),
+          email: guardianForm.email.trim() || null,
+          address: guardianForm.address.trim() || null,
+          relation: guardianForm.relation,
+        };
+      }
+
+      await updateDoc(doc(db, "users", firebaseUser.uid), updateData);
 
       await refreshUser();
       router.push("/dashboard");
@@ -129,6 +150,103 @@ export default function CompleteProfilePage() {
               className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
               placeholder="+91 9876543210"
             />
+          </div>
+
+          {/* Parent/Guardian Section */}
+          <div className="border-t border-[var(--border)] pt-4">
+            <button
+              type="button"
+              onClick={() => setShowGuardian(!showGuardian)}
+              className="flex items-center gap-2 text-sm font-medium text-[var(--card-foreground)]"
+            >
+              <span>{showGuardian ? "▼" : "▶"}</span>
+              Parent / Guardian Information
+              <span className="text-xs font-normal text-[var(--muted-foreground)]">(Optional)</span>
+            </button>
+            {showGuardian && (
+              <div className="mt-3 space-y-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-sm font-medium" htmlFor="guardianName">
+                      Name {showGuardian && guardianForm.phone ? "*" : ""}
+                    </label>
+                    <input
+                      id="guardianName"
+                      type="text"
+                      value={guardianForm.name}
+                      onChange={(e) =>
+                        setGuardianForm((f) => ({ ...f, name: e.target.value }))
+                      }
+                      className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                      placeholder="Guardian's full name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium" htmlFor="guardianRelation">
+                      Relation
+                    </label>
+                    <select
+                      id="guardianRelation"
+                      value={guardianForm.relation}
+                      onChange={(e) =>
+                        setGuardianForm((f) => ({ ...f, relation: e.target.value }))
+                      }
+                      className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                    >
+                      <option value="father">Father</option>
+                      <option value="mother">Mother</option>
+                      <option value="guardian">Guardian</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium" htmlFor="guardianPhone">
+                    Phone {showGuardian && guardianForm.name ? "*" : ""}
+                  </label>
+                  <input
+                    id="guardianPhone"
+                    type="tel"
+                    value={guardianForm.phone}
+                    onChange={(e) =>
+                      setGuardianForm((f) => ({ ...f, phone: e.target.value }))
+                    }
+                    className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                    placeholder="+91 9876543210"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium" htmlFor="guardianEmail">
+                    Email
+                  </label>
+                  <input
+                    id="guardianEmail"
+                    type="email"
+                    value={guardianForm.email}
+                    onChange={(e) =>
+                      setGuardianForm((f) => ({ ...f, email: e.target.value }))
+                    }
+                    className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                    placeholder="guardian@email.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium" htmlFor="guardianAddress">
+                    Address
+                  </label>
+                  <textarea
+                    id="guardianAddress"
+                    rows={2}
+                    value={guardianForm.address}
+                    onChange={(e) =>
+                      setGuardianForm((f) => ({ ...f, address: e.target.value }))
+                    }
+                    className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                    placeholder="Full address"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex items-start gap-2 pt-2">

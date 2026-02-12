@@ -9,6 +9,7 @@ interface Session {
   startTime: string;
   endTime: string;
   topic: string;
+  meetingPlatform: string;
   meetLink: string | null;
   calendarEventId: string | null;
   attendeeCount: number;
@@ -28,6 +29,8 @@ export default function SessionsPage() {
     startTime: "18:00",
     endTime: "19:30",
     topic: "",
+    meetingPlatform: "google_meet",
+    customMeetLink: "",
   });
 
   useEffect(() => {
@@ -62,7 +65,7 @@ export default function SessionsPage() {
       if (res.ok) {
         setShowForm(false);
         setEditingId(null);
-        setForm({ sessionDate: "", startTime: "18:00", endTime: "19:30", topic: "" });
+        setForm({ sessionDate: "", startTime: "18:00", endTime: "19:30", topic: "", meetingPlatform: "google_meet", customMeetLink: "" });
         await fetchSessions();
       } else {
         const data = await res.json();
@@ -106,6 +109,8 @@ export default function SessionsPage() {
       startTime: session.startTime,
       endTime: session.endTime,
       topic: session.topic,
+      meetingPlatform: session.meetingPlatform || "google_meet",
+      customMeetLink: session.meetingPlatform !== "google_meet" ? (session.meetLink || "") : "",
     });
     setEditingId(session.id);
     setShowForm(true);
@@ -138,7 +143,7 @@ export default function SessionsPage() {
       if (createRes.ok) {
         setShowForm(false);
         setEditingId(null);
-        setForm({ sessionDate: "", startTime: "18:00", endTime: "19:30", topic: "" });
+        setForm({ sessionDate: "", startTime: "18:00", endTime: "19:30", topic: "", meetingPlatform: "google_meet", customMeetLink: "" });
         await fetchSessions();
       } else {
         const data = await createRes.json();
@@ -168,7 +173,7 @@ export default function SessionsPage() {
             if (showForm) {
               setShowForm(false);
               setEditingId(null);
-              setForm({ sessionDate: "", startTime: "18:00", endTime: "19:30", topic: "" });
+              setForm({ sessionDate: "", startTime: "18:00", endTime: "19:30", topic: "", meetingPlatform: "google_meet", customMeetLink: "" });
             } else {
               setShowForm(true);
             }
@@ -225,6 +230,39 @@ export default function SessionsPage() {
                 className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
               />
             </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Meeting Platform</label>
+              <select
+                value={form.meetingPlatform}
+                onChange={(e) => setForm({ ...form, meetingPlatform: e.target.value, customMeetLink: "" })}
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+              >
+                <option value="google_meet">Google Meet (auto-create)</option>
+                <option value="zoom">Zoom</option>
+                <option value="ms_teams">Microsoft Teams</option>
+                <option value="custom_link">Custom Link</option>
+              </select>
+            </div>
+            {form.meetingPlatform !== "google_meet" && (
+              <div>
+                <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Meeting Link</label>
+                <input
+                  type="url"
+                  value={form.customMeetLink}
+                  onChange={(e) => setForm({ ...form, customMeetLink: e.target.value })}
+                  placeholder={
+                    form.meetingPlatform === "zoom"
+                      ? "https://zoom.us/j/..."
+                      : form.meetingPlatform === "ms_teams"
+                        ? "https://teams.microsoft.com/..."
+                        : "https://..."
+                  }
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                />
+              </div>
+            )}
           </div>
           <button
             type="submit"

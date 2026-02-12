@@ -23,6 +23,7 @@ interface Session {
   id: string;
   sessionDate: string;
   topic: string;
+  meetLink: string | null;
 }
 
 export default function AttendancePage() {
@@ -33,6 +34,7 @@ export default function AttendancePage() {
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [markings, setMarkings] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -149,6 +151,52 @@ export default function AttendancePage() {
     }
   }
 
+  async function syncFromMeet() {
+    const session = sessions.find((s) => s.sessionDate === selectedDate);
+    if (!session?.meetLink) {
+      alert("No Meet link associated with this session");
+      return;
+    }
+    setSyncing(true);
+    try {
+      const res = await fetch(
+        `/api/courses/${courseId}/sessions/${session.id}/sync-attendance`,
+        { method: "POST" }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        alert(
+          `Synced from Meet: ${data.summary.present} present, ${data.summary.late} late, ${data.summary.absent} absent`
+        );
+        // Refresh attendance
+        const attRes = await fetch(
+          `/api/courses/${courseId}/attendance?sessionDate=${selectedDate}`
+        );
+        if (attRes.ok) {
+          const attData = await attRes.json();
+          const records = attData.attendance || [];
+          setAttendance(records);
+          const m: Record<string, string> = {};
+          records.forEach((r: AttendanceRecord) => {
+            m[r.userId] = r.status;
+          });
+          students.forEach((s) => {
+            if (!m[s.userId]) m[s.userId] = "absent";
+          });
+          setMarkings(m);
+        }
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to sync from Meet");
+      }
+    } catch (err) {
+      console.error("Failed to sync from Meet:", err);
+      alert("Failed to sync from Meet");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   function markAll(status: string) {
     const m: Record<string, string> = {};
     students.forEach((s) => {
@@ -190,8 +238,17 @@ export default function AttendancePage() {
 
       {selectedDate && students.length > 0 && (
         <>
-          {/* Quick mark all */}
+          {/* Quick mark all + Meet sync */}
           <div className="mb-4 flex gap-2">
+            {sessions.find((s) => s.sessionDate === selectedDate)?.meetLink && (
+              <button
+                onClick={syncFromMeet}
+                disabled={syncing}
+                className="rounded-lg border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+              >
+                {syncing ? "Syncing..." : "Sync from Meet"}
+              </button>
+            )}
             <button
               onClick={() => markAll("present")}
               className="rounded-lg border border-green-300 bg-green-50 px-3 py-1.5 text-xs text-green-700 hover:bg-green-100"

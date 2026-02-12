@@ -32,6 +32,7 @@ export default function InstructorLayout({
 
   const courseNav = courseId
     ? [
+        { href: `/instructor/courses/${courseId}/modules`, label: "Content" },
         { href: `/instructor/courses/${courseId}/sessions`, label: "Sessions" },
         { href: `/instructor/courses/${courseId}/attendance`, label: "Attendance" },
         { href: `/instructor/courses/${courseId}/exams`, label: "Exams" },

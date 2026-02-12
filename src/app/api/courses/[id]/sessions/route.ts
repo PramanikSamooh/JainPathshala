@@ -87,11 +87,14 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { sessionDate, startTime, endTime, topic, timeZone } = body;
+    const { sessionDate, startTime, endTime, topic, timeZone, meetingPlatform, customMeetLink } = body;
 
     if (!sessionDate || !startTime || !endTime || !topic) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
+
+    // meetingPlatform: "google_meet" (default) | "zoom" | "ms_teams" | "custom_link"
+    const platform = meetingPlatform || "google_meet";
 
     // Fetch institution for Google credentials
     const instDoc = await db.collection("institutions").doc(course.institutionId).get();
@@ -126,8 +129,13 @@ export async function POST(
     let calendarEventId: string | null = null;
     let meetLink: string | null = null;
 
-    // Create Calendar event with Meet link if credentials are configured
-    if (serviceAccountKey && adminEmail) {
+    // For non-Google Meet platforms, use the custom link directly
+    if (platform !== "google_meet" && customMeetLink) {
+      meetLink = customMeetLink;
+    }
+
+    // Create Calendar event with Meet link if using Google Meet and credentials are configured
+    if (platform === "google_meet" && serviceAccountKey && adminEmail) {
       try {
         const tz = timeZone || "Asia/Kolkata";
         const result = await createMeetSession(serviceAccountKey, adminEmail, {
@@ -157,6 +165,7 @@ export async function POST(
       startTime,
       endTime,
       topic,
+      meetingPlatform: platform,
       calendarEventId,
       meetLink,
       attendeeCount: attendeeEmails.length,

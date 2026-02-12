@@ -337,6 +337,12 @@ export default function AdminCourseEditPage() {
             <h2 className="font-semibold">
               Modules ({course.modules?.length || 0})
             </h2>
+            <a
+              href={`/instructor/courses/${courseId}/modules`}
+              className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-medium hover:bg-[var(--muted)]"
+            >
+              Manage Content
+            </a>
           </div>
           {course.modules?.length > 0 ? (
             <div className="mt-4 space-y-3">

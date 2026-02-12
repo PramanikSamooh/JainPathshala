@@ -13,6 +13,16 @@ export interface UserPreferences {
   language: string;
 }
 
+export type GuardianRelation = "father" | "mother" | "guardian" | "other";
+
+export interface ParentGuardian {
+  name: string;
+  phone: string;
+  email: string | null;
+  address: string | null;
+  relation: GuardianRelation;
+}
+
 export interface User {
   uid: string;
   email: string;
@@ -27,6 +37,7 @@ export interface User {
   profileComplete: boolean;
   googleWorkspaceUserId: string | null;
   profile: UserProfile;
+  parentGuardian: ParentGuardian | null;
   preferences: UserPreferences;
   isActive: boolean;
   lastLoginAt: Timestamp;

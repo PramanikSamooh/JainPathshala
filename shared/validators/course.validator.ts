@@ -103,7 +103,17 @@ export const createLessonSchema = z.object({
   estimatedMinutes: z.number().int().min(1),
 });
 
+export const updateModuleSchema = createModuleSchema.partial();
+export const updateLessonSchema = createLessonSchema.partial();
+
+export const reorderSchema = z.object({
+  orderedIds: z.array(z.string()).min(1),
+});
+
 export type CreateCourseInput = z.infer<typeof createCourseSchema>;
 export type UpdateCourseInput = z.infer<typeof updateCourseSchema>;
 export type CreateModuleInput = z.infer<typeof createModuleSchema>;
 export type CreateLessonInput = z.infer<typeof createLessonSchema>;
+export type UpdateModuleInput = z.infer<typeof updateModuleSchema>;
+export type UpdateLessonInput = z.infer<typeof updateLessonSchema>;
+export type ReorderInput = z.infer<typeof reorderSchema>;

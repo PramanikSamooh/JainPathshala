@@ -89,6 +89,7 @@ export const onUserCreate = functions.region("asia-south1").auth.user().onCreate
         enrollmentNumber: null,
         department: null,
       },
+      parentGuardian: null,
       preferences: {
         emailNotifications: true,
         language: "en",
