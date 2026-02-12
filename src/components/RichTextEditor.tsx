@@ -46,6 +46,7 @@ export default function RichTextEditor({
   minHeight = "120px",
 }: RichTextEditorProps) {
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         heading: { levels: [2, 3] },
