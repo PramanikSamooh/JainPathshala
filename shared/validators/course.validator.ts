@@ -33,7 +33,12 @@ export const createCourseSchema = z.object({
   instructorIds: z.array(z.string()).min(1),
 });
 
-export const updateCourseSchema = createCourseSchema.partial();
+export const updateCourseSchema = createCourseSchema
+  .extend({
+    status: courseStatusEnum,
+    isVisible: z.boolean(),
+  })
+  .partial();
 
 export const createModuleSchema = z.object({
   title: z.string().min(2).max(200),

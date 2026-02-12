@@ -99,7 +99,10 @@ export default function AdminCourseEditPage() {
       const res = await fetch(`/api/courses/${courseId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({
+          status: newStatus,
+          isVisible: newStatus === "published",
+        }),
       });
 
       if (res.ok) {

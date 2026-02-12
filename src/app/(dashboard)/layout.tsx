@@ -24,7 +24,7 @@ function Sidebar() {
     ...(isInstructorOrAbove
       ? [{ href: "/instructor/courses", label: "Instructor" }]
       : []),
-    ...(isAdmin ? [{ href: "/admin/institutions", label: "Admin Panel" }] : []),
+    ...(isAdmin ? [{ href: "/admin/courses", label: "Admin Panel" }] : []),
   ];
 
   async function handleSignOut() {

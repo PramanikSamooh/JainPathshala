@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase/admin";
 import { FieldValue } from "firebase-admin/firestore";
-import { createMeetSession } from "@/lib/google/calendar";
+import { createMeetSession, deleteCalendarEvent } from "@/lib/google/calendar";
 
 /**
  * GET /api/courses/:id/sessions
@@ -183,6 +183,93 @@ export async function POST(
     });
   } catch (err) {
     console.error("POST sessions error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+/**
+ * DELETE /api/courses/:id/sessions
+ * Delete a bootcamp session and its associated Calendar event.
+ *
+ * Body: { sessionId }
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: courseId } = await params;
+    const sessionCookie = request.cookies.get("__session")?.value;
+    if (!sessionCookie) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
+    const decoded = await getAdminAuth().verifySessionCookie(sessionCookie, true);
+    const allowedRoles = ["super_admin", "institution_admin", "instructor"];
+    if (!allowedRoles.includes(decoded.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const db = getAdminDb();
+    const body = await request.json();
+    const { sessionId } = body;
+
+    if (!sessionId) {
+      return NextResponse.json({ error: "sessionId is required" }, { status: 400 });
+    }
+
+    const courseDoc = await db.collection("courses").doc(courseId).get();
+    if (!courseDoc.exists) {
+      return NextResponse.json({ error: "Course not found" }, { status: 404 });
+    }
+
+    const course = courseDoc.data()!;
+    if (decoded.role !== "super_admin" && course.institutionId !== decoded.institutionId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    if (decoded.role === "instructor" && !course.instructorIds?.includes(decoded.uid)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Get session doc to find calendar event ID
+    const sessionRef = db.collection("courses").doc(courseId).collection("sessions").doc(sessionId);
+    const sessionDoc = await sessionRef.get();
+
+    if (!sessionDoc.exists) {
+      return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    }
+
+    const sessionData = sessionDoc.data()!;
+
+    // Delete Calendar event if it exists
+    if (sessionData.calendarEventId) {
+      const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+      const instDoc = await db.collection("institutions").doc(course.institutionId).get();
+      const adminEmail = instDoc.data()?.googleWorkspace?.adminEmail;
+
+      if (serviceAccountKey && adminEmail) {
+        try {
+          await deleteCalendarEvent(serviceAccountKey, adminEmail, sessionData.calendarEventId);
+        } catch (err) {
+          console.error("Failed to delete calendar event:", err);
+          // Continue with session deletion even if calendar delete fails
+        }
+      }
+
+      // Remove calendarEventId from course bootcampConfig
+      await db.collection("courses").doc(courseId).update({
+        "bootcampConfig.calendarEventIds": FieldValue.arrayRemove(sessionData.calendarEventId),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+
+    // Delete session doc
+    await sessionRef.delete();
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("DELETE sessions error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

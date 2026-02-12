@@ -20,6 +20,8 @@ export default function SessionsPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     sessionDate: "",
@@ -59,6 +61,7 @@ export default function SessionsPage() {
 
       if (res.ok) {
         setShowForm(false);
+        setEditingId(null);
         setForm({ sessionDate: "", startTime: "18:00", endTime: "19:30", topic: "" });
         await fetchSessions();
       } else {
@@ -67,6 +70,82 @@ export default function SessionsPage() {
       }
     } catch (err) {
       console.error("Failed to create session:", err);
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function handleDelete(sessionId: string) {
+    if (!confirm("Delete this session? The associated Google Calendar event will also be removed.")) {
+      return;
+    }
+    setDeletingId(sessionId);
+    try {
+      const res = await fetch(`/api/courses/${courseId}/sessions`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId }),
+      });
+
+      if (res.ok) {
+        await fetchSessions();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to delete session");
+      }
+    } catch (err) {
+      console.error("Failed to delete session:", err);
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  function handleEdit(session: Session) {
+    setForm({
+      sessionDate: session.sessionDate,
+      startTime: session.startTime,
+      endTime: session.endTime,
+      topic: session.topic,
+    });
+    setEditingId(session.id);
+    setShowForm(true);
+  }
+
+  async function handleUpdate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingId) return;
+    setCreating(true);
+    try {
+      // Delete old session, create new one (preserves calendar sync)
+      const delRes = await fetch(`/api/courses/${courseId}/sessions`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: editingId }),
+      });
+
+      if (!delRes.ok) {
+        const data = await delRes.json();
+        alert(data.error || "Failed to update session");
+        return;
+      }
+
+      const createRes = await fetch(`/api/courses/${courseId}/sessions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      if (createRes.ok) {
+        setShowForm(false);
+        setEditingId(null);
+        setForm({ sessionDate: "", startTime: "18:00", endTime: "19:30", topic: "" });
+        await fetchSessions();
+      } else {
+        const data = await createRes.json();
+        alert(data.error || "Failed to update session");
+      }
+    } catch (err) {
+      console.error("Failed to update session:", err);
     } finally {
       setCreating(false);
     }
@@ -85,7 +164,15 @@ export default function SessionsPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold">Bootcamp Sessions</h1>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => {
+            if (showForm) {
+              setShowForm(false);
+              setEditingId(null);
+              setForm({ sessionDate: "", startTime: "18:00", endTime: "19:30", topic: "" });
+            } else {
+              setShowForm(true);
+            }
+          }}
           className="rounded-lg px-4 py-2 text-sm text-white"
           style={{ backgroundColor: "var(--brand-primary)" }}
         >
@@ -95,7 +182,7 @@ export default function SessionsPage() {
 
       {/* Create session form */}
       {showForm && (
-        <form onSubmit={handleCreate} className="mb-6 rounded-xl border border-[var(--border)] bg-[var(--card)] p-5 space-y-4">
+        <form onSubmit={editingId ? handleUpdate : handleCreate} className="mb-6 rounded-xl border border-[var(--border)] bg-[var(--card)] p-5 space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Date</label>
@@ -145,7 +232,9 @@ export default function SessionsPage() {
             className="rounded-lg px-4 py-2 text-sm text-white disabled:opacity-50"
             style={{ backgroundColor: "var(--brand-primary)" }}
           >
-            {creating ? "Creating..." : "Create Session"}
+            {creating
+              ? editingId ? "Updating..." : "Creating..."
+              : editingId ? "Update Session" : "Create Session"}
           </button>
         </form>
       )}
@@ -184,6 +273,19 @@ export default function SessionsPage() {
                 ) : (
                   <span className="text-xs text-[var(--muted-foreground)]">No Meet link</span>
                 )}
+                <button
+                  onClick={() => handleEdit(session)}
+                  className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs hover:bg-[var(--muted)]"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(session.id)}
+                  disabled={deletingId === session.id}
+                  className="rounded-lg border border-red-300 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
+                >
+                  {deletingId === session.id ? "Deleting..." : "Delete"}
+                </button>
               </div>
             </div>
           ))}

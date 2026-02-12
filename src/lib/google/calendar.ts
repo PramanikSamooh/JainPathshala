@@ -65,3 +65,18 @@ export async function createMeetSession(
     htmlLink: event.data.htmlLink || null,
   };
 }
+
+/**
+ * Delete a Calendar event by ID.
+ */
+export async function deleteCalendarEvent(
+  serviceAccountKey: string,
+  adminEmail: string,
+  calendarEventId: string
+) {
+  const calendar = getCalendarClient(serviceAccountKey, adminEmail);
+  await calendar.events.delete({
+    calendarId: adminEmail,
+    eventId: calendarEventId,
+  });
+}

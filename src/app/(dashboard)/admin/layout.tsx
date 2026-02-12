@@ -5,12 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const adminNav = [
-  { href: "/admin/institutions", label: "Institutions" },
   { href: "/admin/courses", label: "Courses" },
   { href: "/admin/enrollments", label: "Enrollments" },
   { href: "/admin/payments", label: "Payments" },
   { href: "/admin/users", label: "Users" },
   { href: "/admin/analytics", label: "Analytics" },
+  { href: "/admin/institutions", label: "Institutions" },
 ];
 
 export default function AdminLayout({
