@@ -80,6 +80,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
       ? [{ href: "/instructor/courses", label: "Instructor" }]
       : []),
     ...(isAdmin ? [{ href: "/admin/courses", label: "Admin Panel" }] : []),
+    ...(isAdmin ? [{ href: "/admin/zoom", label: "Zoom Meetings" }] : []),
   ];
 
   async function handleSignOut() {

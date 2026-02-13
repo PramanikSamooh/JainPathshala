@@ -62,6 +62,7 @@ interface Session {
   endTime: string;
   topic: string;
   meetLink: string | null;
+  meetingPlatform: string;
 }
 
 interface Enrollment {
@@ -378,9 +379,15 @@ export default function LearnPage() {
                           href={session.meetLink}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="mt-1 inline-block text-blue-600 hover:underline"
+                          className={`mt-1 inline-block hover:underline ${
+                            session.meetingPlatform === "zoom"
+                              ? "text-[#2D8CFF]"
+                              : "text-blue-600"
+                          }`}
                         >
-                          Join Meet
+                          {session.meetingPlatform === "zoom"
+                            ? "Join Zoom Meeting"
+                            : "Join Meet"}
                         </a>
                       )}
                     </div>

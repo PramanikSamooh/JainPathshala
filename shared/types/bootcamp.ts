@@ -16,6 +16,10 @@ export interface Attendance {
   durationMinutes: number | null;
   markedBy: string;
   markedAt: Timestamp;
+  syncedFromMeet: boolean;
+  syncedFromZoom: boolean;
+  zoomMeetingId: number | null;
+  zoomRegistrantId: string | null;
   notes: string | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;

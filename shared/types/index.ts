@@ -3,6 +3,7 @@ export type {
   InstitutionBranding,
   InstitutionGoogleWorkspace,
   InstitutionRazorpay,
+  InstitutionZoom,
   InstitutionSettings,
   InstitutionContactInfo,
 } from "./institution";
@@ -72,3 +73,17 @@ export type {
   AuditLog,
   AuditSeverity,
 } from "./audit-log";
+
+export type {
+  InstitutionZoom as ZoomInstitutionConfig,
+  ZoomMeeting,
+  ZoomMeetingRecord,
+  ZoomRegistrant,
+  ZoomParticipant,
+  ZoomMeetingReport,
+  ZoomWebhookPayload,
+  ZoomWebhookEventType,
+  CreateZoomMeetingParams,
+  ZoomMeetingSettings,
+  ZoomCredentials,
+} from "./zoom";

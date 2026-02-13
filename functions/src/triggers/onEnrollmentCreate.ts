@@ -2,6 +2,10 @@ import * as functions from "firebase-functions/v1";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { initializeApp, getApps } from "firebase-admin/app";
 import { getClassroomClient } from "../lib/google-clients";
+import {
+  getZoomCredentials,
+  registerZoomParticipant,
+} from "../lib/zoom-client";
 
 if (getApps().length === 0) {
   initializeApp();
@@ -77,15 +81,7 @@ export const onEnrollmentCreate = functions.region("asia-south1").firestore
         "progress.totalModules": modulesSnap.size,
       });
 
-      // Attempt Google Classroom enrollment
-      if (!course.classroomCourseId) {
-        console.log(
-          `Course ${enrollment.courseId} has no Classroom course. Skipping enrollment.`
-        );
-        return;
-      }
-
-      // Fetch institution for Google credentials
+      // Fetch institution for credentials
       const instDoc = await db
         .collection("institutions")
         .doc(enrollment.institutionId)
@@ -100,14 +96,7 @@ export const onEnrollmentCreate = functions.region("asia-south1").firestore
 
       const institution = instDoc.data()!;
 
-      if (!institution.googleWorkspace?.serviceAccountKeyRef) {
-        console.warn(
-          `Institution ${enrollment.institutionId} has no service account configured. Skipping Classroom enrollment.`
-        );
-        return;
-      }
-
-      // Fetch user email
+      // Fetch user
       const userDoc = await db.collection("users").doc(enrollment.userId).get();
       if (!userDoc.exists) {
         console.error(`User ${enrollment.userId} not found`);
@@ -116,58 +105,108 @@ export const onEnrollmentCreate = functions.region("asia-south1").firestore
 
       const user = userDoc.data()!;
 
-      // Get service account key from Secret Manager (or env for now)
-      const serviceAccountKey =
-        process.env.GOOGLE_SERVICE_ACCOUNT_KEY ||
-        institution.googleWorkspace.serviceAccountKeyRef;
+      // ─── Google Classroom enrollment ────────────────────
+      if (course.classroomCourseId && institution.googleWorkspace?.serviceAccountKeyRef) {
+        const serviceAccountKey =
+          process.env.GOOGLE_SERVICE_ACCOUNT_KEY ||
+          institution.googleWorkspace.serviceAccountKeyRef;
 
-      const classroom = getClassroomClient(
-        serviceAccountKey,
-        institution.googleWorkspace.adminEmail
-      );
+        const classroom = getClassroomClient(
+          serviceAccountKey,
+          institution.googleWorkspace.adminEmail
+        );
 
-      if (user.isExternal) {
-        // External users: create invitation
-        try {
-          await classroom.invitations.create({
-            requestBody: {
+        if (user.isExternal) {
+          try {
+            await classroom.invitations.create({
+              requestBody: {
+                courseId: course.classroomCourseId,
+                userId: user.email,
+                role: "STUDENT",
+              },
+            });
+            console.log(
+              `Classroom invitation sent to external user ${user.email} for course ${course.classroomCourseId}`
+            );
+          } catch (invErr) {
+            console.warn(
+              `Failed to create Classroom invitation for ${user.email}:`,
+              invErr
+            );
+          }
+        } else {
+          try {
+            await classroom.courses.students.create({
               courseId: course.classroomCourseId,
-              userId: user.email,
-              role: "STUDENT",
-            },
-          });
-          console.log(
-            `Classroom invitation sent to external user ${user.email} for course ${course.classroomCourseId}`
-          );
-        } catch (invErr) {
-          console.warn(
-            `Failed to create Classroom invitation for ${user.email}:`,
-            invErr
-          );
+              requestBody: { userId: user.email },
+            });
+          } catch (enrollErr) {
+            console.warn(
+              `Failed to enroll ${user.email} in Classroom course ${course.classroomCourseId}:`,
+              enrollErr
+            );
+          }
         }
-      } else {
-        // Domain users: direct enrollment
-        try {
-          await classroom.courses.students.create({
-            courseId: course.classroomCourseId,
-            requestBody: { userId: user.email },
-          });
-        } catch (enrollErr) {
-          console.warn(
-            `Failed to enroll ${user.email} in Classroom course ${course.classroomCourseId}:`,
-            enrollErr
-          );
-        }
+
+        await snap.ref.update({
+          classroomEnrolled: true,
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+
+        console.log(
+          `Enrollment ${enrollmentId}: User ${user.email} enrolled in Classroom course ${course.classroomCourseId}`
+        );
       }
 
-      await snap.ref.update({
-        classroomEnrolled: true,
-        updatedAt: FieldValue.serverTimestamp(),
-      });
+      // ─── Zoom auto-registration ─────────────────────────
+      const zoomCreds = getZoomCredentials(institution.zoom);
+      if (zoomCreds) {
+        try {
+          // Find upcoming Zoom sessions for this course
+          const today = new Date().toISOString().split("T")[0];
+          const sessionsSnap = await db
+            .collection("courses")
+            .doc(enrollment.courseId)
+            .collection("sessions")
+            .where("meetingPlatform", "==", "zoom")
+            .where("sessionDate", ">=", today)
+            .get();
 
-      console.log(
-        `Enrollment ${enrollmentId}: User ${user.email} enrolled in Classroom course ${course.classroomCourseId}`
-      );
+          const nameParts = (user.displayName || user.email.split("@")[0]).split(" ");
+          const firstName = nameParts[0] || "Student";
+          const lastName = nameParts.slice(1).join(" ") || "User";
+
+          let registered = 0;
+          for (const sessionDoc of sessionsSnap.docs) {
+            const session = sessionDoc.data();
+            if (session.zoomMeetingId) {
+              try {
+                await registerZoomParticipant(
+                  zoomCreds,
+                  session.zoomMeetingId,
+                  user.email,
+                  firstName,
+                  lastName
+                );
+                registered++;
+              } catch (regErr) {
+                console.warn(
+                  `Failed to register ${user.email} for Zoom meeting ${session.zoomMeetingId}:`,
+                  regErr
+                );
+              }
+            }
+          }
+
+          if (registered > 0) {
+            console.log(
+              `Enrollment ${enrollmentId}: User ${user.email} registered in ${registered} upcoming Zoom meetings`
+            );
+          }
+        } catch (zoomErr) {
+          console.warn(`Zoom auto-registration failed for enrollment ${enrollmentId}:`, zoomErr);
+        }
+      }
     } catch (err) {
       console.error(`Error processing enrollment ${enrollmentId}:`, err);
     }

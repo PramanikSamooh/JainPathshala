@@ -128,9 +128,11 @@ export async function POST(
 
     let calendarEventId: string | null = null;
     let meetLink: string | null = null;
+    let zoomMeetingId: number | null = null;
+    let zoomMeetingUuid: string | null = null;
 
-    // For non-Google Meet platforms, use the custom link directly
-    if (platform !== "google_meet" && customMeetLink) {
+    // For platforms without API integration, use the custom link directly
+    if (!["google_meet", "zoom"].includes(platform) && customMeetLink) {
       meetLink = customMeetLink;
     }
 
@@ -151,7 +153,49 @@ export async function POST(
         meetLink = result.meetLink;
       } catch (err) {
         console.error("Calendar event creation failed:", err);
-        // Continue without calendar — session will be created without Meet link
+      }
+    }
+
+    // Create Zoom meeting if using Zoom
+    if (platform === "zoom") {
+      try {
+        const { getZoomCredentials } = await import("@/lib/zoom/config");
+        const { createZoomMeeting, addZoomRegistrant } = await import("@/lib/zoom/client");
+
+        const zoomCreds = getZoomCredentials(institution.zoom);
+
+        // Calculate duration in minutes
+        const [startH, startM] = startTime.split(":").map(Number);
+        const [endH, endM] = endTime.split(":").map(Number);
+        const durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+
+        const tz = timeZone || "Asia/Kolkata";
+        const meeting = await createZoomMeeting(zoomCreds, {
+          topic: `${course.title}: ${topic}`,
+          startTime: `${sessionDate}T${startTime}:00`,
+          duration: durationMinutes,
+          timezone: tz,
+          agenda: `Bootcamp session for ${course.title}`,
+          registrationRequired: true,
+        });
+
+        meetLink = meeting.join_url;
+        zoomMeetingId = meeting.id;
+        zoomMeetingUuid = meeting.uuid;
+
+        // Pre-register enrolled students
+        for (const email of attendeeEmails) {
+          try {
+            const nameParts = email.split("@")[0].split(".");
+            const firstName = nameParts[0] || "Student";
+            const lastName = nameParts.slice(1).join(" ") || "User";
+            await addZoomRegistrant(zoomCreds, meeting.id, email, firstName, lastName);
+          } catch (regErr) {
+            console.warn(`Failed to register ${email} for Zoom meeting:`, regErr);
+          }
+        }
+      } catch (err) {
+        console.error("Zoom meeting creation failed:", err);
       }
     }
 
@@ -168,6 +212,8 @@ export async function POST(
       meetingPlatform: platform,
       calendarEventId,
       meetLink,
+      zoomMeetingId,
+      zoomMeetingUuid,
       attendeeCount: attendeeEmails.length,
       createdBy: decoded.uid,
       createdAt: FieldValue.serverTimestamp(),
@@ -262,15 +308,26 @@ export async function DELETE(
           await deleteCalendarEvent(serviceAccountKey, adminEmail, sessionData.calendarEventId);
         } catch (err) {
           console.error("Failed to delete calendar event:", err);
-          // Continue with session deletion even if calendar delete fails
         }
       }
 
-      // Remove calendarEventId from course bootcampConfig
       await db.collection("courses").doc(courseId).update({
         "bootcampConfig.calendarEventIds": FieldValue.arrayRemove(sessionData.calendarEventId),
         updatedAt: FieldValue.serverTimestamp(),
       });
+    }
+
+    // Delete Zoom meeting if it exists
+    if (sessionData.meetingPlatform === "zoom" && sessionData.zoomMeetingId) {
+      try {
+        const { getZoomCredentials } = await import("@/lib/zoom/config");
+        const { deleteZoomMeeting } = await import("@/lib/zoom/client");
+        const instDoc = await db.collection("institutions").doc(course.institutionId).get();
+        const zoomCreds = getZoomCredentials(instDoc.data()?.zoom);
+        await deleteZoomMeeting(zoomCreds, sessionData.zoomMeetingId);
+      } catch (err) {
+        console.error("Failed to delete Zoom meeting:", err);
+      }
     }
 
     // Delete session doc

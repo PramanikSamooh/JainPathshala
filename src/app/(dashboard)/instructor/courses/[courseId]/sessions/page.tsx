@@ -12,6 +12,8 @@ interface Session {
   meetingPlatform: string;
   meetLink: string | null;
   calendarEventId: string | null;
+  zoomMeetingId: number | null;
+  zoomMeetingUuid: string | null;
   attendeeCount: number;
 }
 
@@ -79,7 +81,7 @@ export default function SessionsPage() {
   }
 
   async function handleDelete(sessionId: string) {
-    if (!confirm("Delete this session? The associated Google Calendar event will also be removed.")) {
+    if (!confirm("Delete this session? The associated Calendar event or Zoom meeting will also be removed.")) {
       return;
     }
     setDeletingId(sessionId);
@@ -240,12 +242,19 @@ export default function SessionsPage() {
                 className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
               >
                 <option value="google_meet">Google Meet (auto-create)</option>
-                <option value="zoom">Zoom</option>
+                <option value="zoom">Zoom (auto-create)</option>
                 <option value="ms_teams">Microsoft Teams</option>
                 <option value="custom_link">Custom Link</option>
               </select>
             </div>
-            {form.meetingPlatform !== "google_meet" && (
+            {form.meetingPlatform === "zoom" && (
+              <div className="flex items-center">
+                <p className="text-xs text-[var(--muted-foreground)]">
+                  Zoom meeting will be created automatically with registration enabled. Enrolled students will be pre-registered.
+                </p>
+              </div>
+            )}
+            {!["google_meet", "zoom"].includes(form.meetingPlatform) && (
               <div>
                 <label className="block text-xs font-medium text-[var(--muted-foreground)] mb-1">Meeting Link</label>
                 <input
@@ -253,11 +262,9 @@ export default function SessionsPage() {
                   value={form.customMeetLink}
                   onChange={(e) => setForm({ ...form, customMeetLink: e.target.value })}
                   placeholder={
-                    form.meetingPlatform === "zoom"
-                      ? "https://zoom.us/j/..."
-                      : form.meetingPlatform === "ms_teams"
-                        ? "https://teams.microsoft.com/..."
-                        : "https://..."
+                    form.meetingPlatform === "ms_teams"
+                      ? "https://teams.microsoft.com/..."
+                      : "https://..."
                   }
                   className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
                 />
@@ -304,12 +311,21 @@ export default function SessionsPage() {
                     href={session.meetLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-lg px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700"
+                    className={`rounded-lg px-3 py-1.5 text-xs font-medium text-white ${
+                      session.meetingPlatform === "zoom"
+                        ? "bg-[#2D8CFF] hover:bg-[#2681ED]"
+                        : "bg-blue-600 hover:bg-blue-700"
+                    }`}
                   >
-                    Join Meet
+                    {session.meetingPlatform === "zoom" ? "Join Zoom" : "Join Meet"}
                   </a>
                 ) : (
-                  <span className="text-xs text-[var(--muted-foreground)]">No Meet link</span>
+                  <span className="text-xs text-[var(--muted-foreground)]">No meeting link</span>
+                )}
+                {session.zoomMeetingId && (
+                  <span className="rounded bg-[var(--muted)] px-2 py-0.5 text-xs text-[var(--muted-foreground)]">
+                    Zoom #{session.zoomMeetingId}
+                  </span>
                 )}
                 <button
                   onClick={() => handleEdit(session)}

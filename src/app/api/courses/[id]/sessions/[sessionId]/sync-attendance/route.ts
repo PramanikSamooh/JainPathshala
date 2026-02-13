@@ -54,30 +54,28 @@ export async function POST(
     }
 
     const sessionData = sessionDoc.data()!;
+    const platform = sessionData.meetingPlatform || "google_meet";
 
-    if (!sessionData.meetLink) {
+    if (platform === "google_meet" && !sessionData.meetLink) {
       return NextResponse.json(
         { error: "No Meet link associated with this session" },
         { status: 400 }
       );
     }
 
-    // Get institution for Google credentials
+    if (platform === "zoom" && !sessionData.zoomMeetingUuid) {
+      return NextResponse.json(
+        { error: "No Zoom meeting associated with this session" },
+        { status: 400 }
+      );
+    }
+
+    // Get institution
     const instDoc = await db.collection("institutions").doc(course.institutionId).get();
     if (!instDoc.exists) {
       return NextResponse.json({ error: "Institution not found" }, { status: 404 });
     }
-
     const institution = instDoc.data()!;
-    const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
-    const adminEmail = institution.googleWorkspace?.adminEmail;
-
-    if (!serviceAccountKey || !adminEmail) {
-      return NextResponse.json(
-        { error: "Google credentials not configured" },
-        { status: 500 }
-      );
-    }
 
     // Get enrolled students with their emails
     const enrollmentsSnap = await db
@@ -102,15 +100,43 @@ export async function POST(
     const sessionStartTime = `${sessionData.sessionDate}T${sessionData.startTime}:00+05:30`;
     const sessionEndTime = `${sessionData.sessionDate}T${sessionData.endTime}:00+05:30`;
 
-    // Get attendance from Meet API
-    const attendance = await getMeetAttendance(
-      serviceAccountKey,
-      adminEmail,
-      sessionData.meetLink,
-      sessionStartTime,
-      sessionEndTime,
-      enrolledEmails
-    );
+    // Get attendance from the appropriate platform
+    let attendance: { userId: string; email: string; status: string; joinedAt: string | null; leftAt: string | null; durationMinutes: number }[];
+    let syncSource: string;
+
+    if (platform === "zoom") {
+      // Zoom attendance sync
+      const { getZoomCredentials } = await import("@/lib/zoom/config");
+      const { getZoomAttendance } = await import("@/lib/zoom/attendance");
+      const zoomCreds = getZoomCredentials(institution.zoom);
+      attendance = await getZoomAttendance(
+        zoomCreds,
+        sessionData.zoomMeetingUuid,
+        sessionStartTime,
+        sessionEndTime,
+        enrolledEmails
+      );
+      syncSource = "Zoom";
+    } else {
+      // Google Meet attendance sync (default)
+      const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+      const adminEmail = institution.googleWorkspace?.adminEmail;
+      if (!serviceAccountKey || !adminEmail) {
+        return NextResponse.json(
+          { error: "Google credentials not configured" },
+          { status: 500 }
+        );
+      }
+      attendance = await getMeetAttendance(
+        serviceAccountKey,
+        adminEmail,
+        sessionData.meetLink,
+        sessionStartTime,
+        sessionEndTime,
+        enrolledEmails
+      );
+      syncSource = "Meet";
+    }
 
     // Save attendance records
     const batch = db.batch();
@@ -133,7 +159,10 @@ export async function POST(
           joinedAt: record.joinedAt,
           leftAt: record.leftAt,
           durationMinutes: record.durationMinutes,
-          syncedFromMeet: true,
+          syncedFromMeet: platform === "google_meet",
+          syncedFromZoom: platform === "zoom",
+          zoomMeetingId: platform === "zoom" ? sessionData.zoomMeetingId : null,
+          zoomRegistrantId: null,
           markedBy: decoded.uid,
           markedAt: FieldValue.serverTimestamp(),
           notes: null,
@@ -185,7 +214,7 @@ export async function POST(
     }
 
     return NextResponse.json({
-      message: `Synced ${results.length} attendance records from Meet`,
+      message: `Synced ${results.length} attendance records from ${syncSource}`,
       results,
       summary: {
         present: results.filter((r) => r.status === "present").length,

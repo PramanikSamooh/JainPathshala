@@ -42,6 +42,15 @@ export interface InstitutionWhatsApp {
   businessAccountId: string;
 }
 
+export interface InstitutionZoom {
+  accountId: string;
+  clientId: string;
+  clientSecretRef: string;
+  webhookSecretToken: string;
+  defaultUserId: string;
+  isEnabled: boolean;
+}
+
 export interface InstitutionContactInfo {
   supportEmail: string;
   phone: string;
@@ -60,6 +69,7 @@ export interface Institution {
   googleWorkspace: InstitutionGoogleWorkspace;
   razorpay: InstitutionRazorpay;
   whatsapp: InstitutionWhatsApp | null;
+  zoom: InstitutionZoom | null;
   settings: InstitutionSettings;
   contactInfo: InstitutionContactInfo;
   isActive: boolean;
