@@ -47,7 +47,7 @@ export default function AdminEnrollmentsPage() {
   useEffect(() => {
     async function fetchEnrollments() {
       try {
-        const res = await fetch("/api/enrollments");
+        const res = await fetch("/api/enrollments?include=all", { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
           setEnrollments(data.enrollments);

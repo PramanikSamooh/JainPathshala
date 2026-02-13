@@ -12,10 +12,20 @@ interface PaymentItem {
   razorpayOrderId: string;
   razorpayPaymentId: string | null;
   receiptNumber: string;
-  paidAt: string | null;
+  paidAt: { _seconds: number; _nanoseconds: number } | string | null;
+  createdAt?: { _seconds: number; _nanoseconds: number } | string | null;
   // Populated
   userName?: string;
   courseTitle?: string;
+}
+
+function formatTimestamp(val: unknown): string {
+  if (!val) return "—";
+  if (typeof val === "object" && val !== null && "_seconds" in val) {
+    return new Date((val as { _seconds: number })._seconds * 1000).toLocaleDateString();
+  }
+  const d = new Date(val as string | number);
+  return isNaN(d.getTime()) ? "—" : d.toLocaleDateString();
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -33,7 +43,7 @@ export default function AdminPaymentsPage() {
   useEffect(() => {
     async function fetchPayments() {
       try {
-        const res = await fetch("/api/payments");
+        const res = await fetch("/api/payments", { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
           setPayments(data.payments);
@@ -115,9 +125,7 @@ export default function AdminPaymentsPage() {
                     </span>
                   </td>
                   <td className="py-3 text-xs text-[var(--muted-foreground)]">
-                    {payment.paidAt
-                      ? new Date(payment.paidAt).toLocaleDateString()
-                      : "—"}
+                    {formatTimestamp(payment.paidAt || payment.createdAt)}
                   </td>
                 </tr>
               ))}

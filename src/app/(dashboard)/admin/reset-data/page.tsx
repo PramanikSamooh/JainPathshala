@@ -18,12 +18,19 @@ export default function ResetDataPage() {
     setError(null);
     setResult(null);
 
+    // Use AbortController with 90s timeout — the server has maxDuration=60s
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90_000);
+
     try {
       const res = await fetch("/api/admin/reset-data", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ confirmPhrase }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       const data = await res.json();
       if (res.ok) {
@@ -32,8 +39,13 @@ export default function ResetDataPage() {
       } else {
         setError(data.error || "Reset failed");
       }
-    } catch {
-      setError("Network error");
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setError("Request timed out. The reset may still be processing — please wait a moment and check your data.");
+      } else {
+        setError("Network error — please check your connection and try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -76,7 +88,7 @@ export default function ResetDataPage() {
         disabled={!isConfirmed || loading}
         className="mt-4 rounded-lg bg-red-600 px-6 py-2.5 text-sm font-medium text-white disabled:opacity-50"
       >
-        {loading ? "Deleting..." : "Reset All Data"}
+        {loading ? "Deleting... (this may take up to a minute)" : "Reset All Data"}
       </button>
 
       {error && (
