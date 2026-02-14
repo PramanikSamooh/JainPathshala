@@ -92,6 +92,14 @@ export async function POST(request: NextRequest) {
       ...data,
       id: data.slug,
       inviteCode,
+      location: data.location || {
+        country: "",
+        state: "",
+        city: "",
+        lat: null,
+        lng: null,
+        timezone: "Asia/Kolkata",
+      },
       googleWorkspace: {
         customerDomain: "",
         adminEmail: "",

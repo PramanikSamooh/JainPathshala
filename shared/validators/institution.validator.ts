@@ -4,8 +4,8 @@ const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Invalid hex color");
 const optionalUrl = z.union([z.url(), z.literal("")]);
 
 export const institutionBrandingSchema = z.object({
-  logoUrl: z.url(),
-  faviconUrl: z.url(),
+  logoUrl: optionalUrl,
+  faviconUrl: optionalUrl,
   primaryColor: hexColor,
   secondaryColor: hexColor,
   accentColor: hexColor,
@@ -17,8 +17,8 @@ export const institutionBrandingSchema = z.object({
 export const institutionContactInfoSchema = z.object({
   supportEmail: z.email(),
   phone: z.string().min(10).max(15),
-  address: z.string().max(500),
-  website: z.url(),
+  address: z.string().max(500).optional().default(""),
+  website: optionalUrl.optional().default(""),
 });
 
 export const institutionLocationSchema = z.object({
@@ -40,7 +40,7 @@ export const createInstitutionSchema = z.object({
   domains: z.array(z.string().min(3)).min(1),
   primaryDomain: z.string().min(3),
   allowedEmailDomains: z.array(z.string().min(3)),
-  location: institutionLocationSchema,
+  location: institutionLocationSchema.optional(),
   branding: institutionBrandingSchema,
   contactInfo: institutionContactInfoSchema,
   settings: z.object({
