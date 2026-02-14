@@ -11,6 +11,11 @@ interface InstructorOption {
   email: string;
 }
 
+interface InstitutionOption {
+  id: string;
+  name: string;
+}
+
 export default function NewCoursePage() {
   const router = useRouter();
   const { firebaseUser, userData } = useAuth();
@@ -18,6 +23,8 @@ export default function NewCoursePage() {
   const [error, setError] = useState<string | null>(null);
   const [instructors, setInstructors] = useState<InstructorOption[]>([]);
   const [selectedInstructors, setSelectedInstructors] = useState<string[]>([]);
+  const [institutions, setInstitutions] = useState<InstitutionOption[]>([]);
+  const [selectedInstitutionId, setSelectedInstitutionId] = useState(userData?.institutionId || "");
 
   const [form, setForm] = useState({
     title: "",
@@ -47,12 +54,31 @@ export default function NewCoursePage() {
         }
       } catch { /* ignore */ }
     }
+    async function fetchInstitutions() {
+      if (userData?.role !== "super_admin") return;
+      try {
+        const res = await fetch("/api/institutions");
+        if (res.ok) {
+          const data = await res.json();
+          setInstitutions(data.institutions || []);
+          // Auto-select if only one institution
+          if (data.institutions?.length === 1) {
+            setSelectedInstitutionId(data.institutions[0].id);
+          }
+        }
+      } catch { /* ignore */ }
+    }
     fetchInstructors();
+    fetchInstitutions();
     // Default: assign current user if instructor
     if (firebaseUser?.uid && userData?.role === "instructor") {
       setSelectedInstructors([firebaseUser.uid]);
     }
-  }, [firebaseUser?.uid, userData?.role]);
+    // Update selectedInstitutionId when userData loads
+    if (userData?.institutionId) {
+      setSelectedInstitutionId(userData.institutionId);
+    }
+  }, [firebaseUser?.uid, userData?.role, userData?.institutionId]);
 
   function updateField(path: string, value: string | number | boolean) {
     setForm((prev) => {
@@ -74,6 +100,7 @@ export default function NewCoursePage() {
     try {
       const payload = {
         ...form,
+        institutionId: selectedInstitutionId || undefined,
         tags: form.tags
           .split(",")
           .map((t) => t.trim())
@@ -118,6 +145,12 @@ export default function NewCoursePage() {
 
       <h1 className="text-2xl font-bold">Create New Course</h1>
 
+      {!selectedInstitutionId && (
+        <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
+          No institution assigned. {userData?.role === "super_admin" ? "Select one below." : "Contact your admin."}
+        </div>
+      )}
+
       {error && (
         <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
           {error}
@@ -125,6 +158,26 @@ export default function NewCoursePage() {
       )}
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+        {/* Institution selector for super_admin */}
+        {userData?.role === "super_admin" && institutions.length > 0 && (
+          <section className="rounded-lg border border-[var(--border)] p-4">
+            <h2 className="font-semibold">Institution</h2>
+            <select
+              value={selectedInstitutionId}
+              onChange={(e) => setSelectedInstitutionId(e.target.value)}
+              required
+              className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+            >
+              <option value="">Select institution...</option>
+              {institutions.map((inst) => (
+                <option key={inst.id} value={inst.id}>
+                  {inst.name} ({inst.id})
+                </option>
+              ))}
+            </select>
+          </section>
+        )}
+
         {/* Basic Info */}
         <section className="rounded-lg border border-[var(--border)] p-4">
           <h2 className="font-semibold">Course Details</h2>

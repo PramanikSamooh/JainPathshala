@@ -102,7 +102,18 @@ export async function POST(request: NextRequest) {
 
     const data = parsed.data;
     const db = getAdminDb();
-    const institutionId = decoded.institutionId;
+
+    // Super admins can specify an institutionId in the body; others use their claims
+    let institutionId = decoded.institutionId;
+    if (decoded.role === "super_admin" && body.institutionId) {
+      institutionId = body.institutionId;
+    }
+
+    // Fallback: look up from user doc
+    if (!institutionId) {
+      const userDoc = await db.collection("users").doc(decoded.uid).get();
+      institutionId = userDoc.data()?.institutionId || userDoc.data()?.activeInstitutionId;
+    }
 
     if (!institutionId) {
       return NextResponse.json({ error: "No institution assigned" }, { status: 400 });
