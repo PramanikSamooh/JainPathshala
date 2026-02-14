@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import RichTextEditor from "@/components/RichTextEditor";
+import { stripHtml } from "@/components/SafeHtml";
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -575,7 +576,7 @@ export default function ModulesPage() {
                   </div>
                   <p className="mt-0.5 text-xs text-[var(--muted-foreground)] ml-5">
                     {mod.lessonCount} lesson{mod.lessonCount !== 1 ? "s" : ""}
-                    {mod.description && ` · ${mod.description}`}
+                    {mod.description && ` · ${stripHtml(mod.description)}`}
                   </p>
                 </div>
                 <div className="flex items-center gap-1">

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import RichTextEditor from "@/components/RichTextEditor";
+import { trimWhitespace } from "@/lib/utils/normalize";
 
 interface InstructorOption {
   uid: string;
@@ -189,6 +190,7 @@ export default function NewCoursePage() {
                 required
                 value={form.title}
                 onChange={(e) => updateField("title", e.target.value)}
+                onBlur={(e) => updateField("title", trimWhitespace(e.target.value))}
                 placeholder="Introduction to Financial Markets"
                 className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
               />
@@ -246,6 +248,7 @@ export default function NewCoursePage() {
                 required
                 value={form.shortDescription}
                 onChange={(e) => updateField("shortDescription", e.target.value)}
+                onBlur={(e) => updateField("shortDescription", trimWhitespace(e.target.value))}
                 maxLength={300}
                 placeholder="A brief overview (shown in course cards)"
                 className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"

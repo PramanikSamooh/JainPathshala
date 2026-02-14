@@ -7,6 +7,7 @@ import { getClientDb } from "@/lib/firebase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useInstitution } from "@/contexts/InstitutionContext";
 import PhoneInput from "@/components/PhoneInput";
+import { properCaseName, trimWhitespace } from "@/lib/utils/normalize";
 
 interface BrowseInstitution {
   id: string;
@@ -209,6 +210,9 @@ export default function CompleteProfilePage() {
               onChange={(e) =>
                 setForm((f) => ({ ...f, displayName: e.target.value }))
               }
+              onBlur={(e) =>
+                setForm((f) => ({ ...f, displayName: properCaseName(e.target.value) }))
+              }
               className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
               placeholder="Enter your full name"
             />
@@ -260,6 +264,12 @@ export default function CompleteProfilePage() {
                       address: { ...f.address, country: e.target.value },
                     }))
                   }
+                  onBlur={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      address: { ...f.address, country: properCaseName(e.target.value) },
+                    }))
+                  }
                   className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
                   placeholder="Country"
                 />
@@ -277,6 +287,12 @@ export default function CompleteProfilePage() {
                     setForm((f) => ({
                       ...f,
                       address: { ...f.address, state: e.target.value },
+                    }))
+                  }
+                  onBlur={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      address: { ...f.address, state: properCaseName(e.target.value) },
                     }))
                   }
                   className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
@@ -298,6 +314,12 @@ export default function CompleteProfilePage() {
                       address: { ...f.address, city: e.target.value },
                     }))
                   }
+                  onBlur={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      address: { ...f.address, city: properCaseName(e.target.value) },
+                    }))
+                  }
                   className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
                   placeholder="City"
                 />
@@ -316,6 +338,12 @@ export default function CompleteProfilePage() {
                     setForm((f) => ({
                       ...f,
                       address: { ...f.address, pincode: e.target.value },
+                    }))
+                  }
+                  onBlur={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      address: { ...f.address, pincode: trimWhitespace(e.target.value) },
                     }))
                   }
                   className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
@@ -401,6 +429,9 @@ export default function CompleteProfilePage() {
                       value={guardianForm.name}
                       onChange={(e) =>
                         setGuardianForm((f) => ({ ...f, name: e.target.value }))
+                      }
+                      onBlur={(e) =>
+                        setGuardianForm((f) => ({ ...f, name: properCaseName(e.target.value) }))
                       }
                       className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
                       placeholder="Guardian's full name"

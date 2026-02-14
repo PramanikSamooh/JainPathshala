@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { parsePhoneNumberFromString, type CountryCode } from "libphonenumber-js";
 
 const COUNTRIES = [
   { code: "+91", country: "IN", name: "India", flag: "\u{1F1EE}\u{1F1F3}" },
@@ -28,14 +29,16 @@ const COUNTRIES = [
 interface PhoneInputProps {
   value: string;
   onChange: (fullNumber: string) => void;
+  onValidate?: (isValid: boolean) => void;
   required?: boolean;
   id?: string;
 }
 
-export default function PhoneInput({ value, onChange, required, id }: PhoneInputProps) {
+export default function PhoneInput({ value, onChange, onValidate, required, id }: PhoneInputProps) {
   const [countryCode, setCountryCode] = useState("+91");
   const [number, setNumber] = useState("");
   const [geoDetected, setGeoDetected] = useState(false);
+  const [validity, setValidity] = useState<boolean | null>(null);
 
   // Parse value when it changes (handles async userData loading)
   useEffect(() => {
@@ -77,43 +80,73 @@ export default function PhoneInput({ value, onChange, required, id }: PhoneInput
     return () => controller.abort();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  function validateAndEmit(code: string, digits: string) {
+    const fullNumber = `${code}${digits}`;
+    const countryEntry = COUNTRIES.find((c) => c.code === code);
+    const countryIso = countryEntry?.country as CountryCode | undefined;
+
+    if (!digits) {
+      setValidity(null);
+      onChange(fullNumber);
+      onValidate?.(false);
+      return;
+    }
+
+    const parsed = parsePhoneNumberFromString(fullNumber, countryIso);
+    const isValid = parsed?.isValid() ?? false;
+
+    setValidity(isValid);
+    onChange(parsed?.format("E.164") ?? fullNumber);
+    onValidate?.(isValid);
+  }
+
   function handleNumberChange(newNumber: string) {
-    // Strip non-digit characters
     const digits = newNumber.replace(/\D/g, "");
     setNumber(digits);
-    onChange(`${countryCode}${digits}`);
+    validateAndEmit(countryCode, digits);
   }
 
   function handleCodeChange(newCode: string) {
     setCountryCode(newCode);
-    onChange(`${newCode}${number}`);
+    validateAndEmit(newCode, number);
   }
 
   const selectedCountry = COUNTRIES.find((c) => c.code === countryCode);
 
   return (
-    <div className="flex gap-2">
-      <select
-        value={countryCode}
-        onChange={(e) => handleCodeChange(e.target.value)}
-        className="w-[130px] shrink-0 rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 py-2 text-sm"
-        aria-label="Country code"
-      >
-        {COUNTRIES.map((c) => (
-          <option key={c.country} value={c.code}>
-            {c.flag} {c.code}
-          </option>
-        ))}
-      </select>
-      <input
-        id={id}
-        type="tel"
-        required={required}
-        value={number}
-        onChange={(e) => handleNumberChange(e.target.value)}
-        placeholder={selectedCountry?.country === "IN" ? "9876543210" : "Phone number"}
-        className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
-      />
+    <div>
+      <div className="flex gap-2">
+        <select
+          value={countryCode}
+          onChange={(e) => handleCodeChange(e.target.value)}
+          className="w-[130px] shrink-0 rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 py-2 text-sm"
+          aria-label="Country code"
+        >
+          {COUNTRIES.map((c) => (
+            <option key={c.country} value={c.code}>
+              {c.flag} {c.code}
+            </option>
+          ))}
+        </select>
+        <input
+          id={id}
+          type="tel"
+          required={required}
+          value={number}
+          onChange={(e) => handleNumberChange(e.target.value)}
+          placeholder={selectedCountry?.country === "IN" ? "9876543210" : "Phone number"}
+          className={`flex-1 rounded-lg border bg-[var(--background)] px-3 py-2 text-sm ${
+            validity === null
+              ? "border-[var(--border)]"
+              : validity
+                ? "border-green-500"
+                : "border-red-400"
+          }`}
+        />
+      </div>
+      {validity === false && number.length > 0 && (
+        <p className="mt-1 text-xs text-red-500">Invalid phone number for selected country</p>
+      )}
     </div>
   );
 }

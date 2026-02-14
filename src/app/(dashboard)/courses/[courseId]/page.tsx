@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import SafeHtml from "@/components/SafeHtml";
 
 interface CourseDetail {
   id: string;
@@ -119,9 +120,10 @@ export default function CourseDetailPage() {
           </div>
 
           <h1 className="mt-4 text-2xl font-bold">{course.title}</h1>
-          <p className="mt-2 text-[var(--muted-foreground)]">
-            {course.description}
-          </p>
+          <SafeHtml
+            html={course.description}
+            className="mt-2 text-[var(--muted-foreground)]"
+          />
 
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
             <div className="rounded-lg bg-[var(--muted)] p-4 text-center">
@@ -199,9 +201,10 @@ export default function CourseDetailPage() {
                     Module {i + 1}: {module.title}
                   </h3>
                   {module.description && (
-                    <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-                      {module.description}
-                    </p>
+                    <SafeHtml
+                      html={module.description}
+                      className="mt-1 text-sm text-[var(--muted-foreground)]"
+                    />
                   )}
                   <ul className="mt-3 space-y-1">
                     {module.lessons.map((lesson) => (

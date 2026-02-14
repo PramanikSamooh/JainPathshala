@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { properCaseName, trimWhitespace } from "@/lib/utils/normalize";
 
 export default function NewInstitutionPage() {
   const router = useRouter();
@@ -128,6 +129,7 @@ export default function NewInstitutionPage() {
                 required
                 value={form.name}
                 onChange={(e) => updateField("name", e.target.value)}
+                onBlur={(e) => updateField("name", trimWhitespace(e.target.value))}
                 placeholder="Institute of Financial Studies"
                 className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
               />
@@ -196,6 +198,7 @@ export default function NewInstitutionPage() {
                 type="text"
                 value={form.location.country}
                 onChange={(e) => updateField("location.country", e.target.value)}
+                onBlur={(e) => updateField("location.country", properCaseName(e.target.value))}
                 placeholder="India"
                 className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
               />
@@ -206,6 +209,7 @@ export default function NewInstitutionPage() {
                 type="text"
                 value={form.location.state}
                 onChange={(e) => updateField("location.state", e.target.value)}
+                onBlur={(e) => updateField("location.state", properCaseName(e.target.value))}
                 placeholder="Rajasthan"
                 className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
               />
@@ -216,6 +220,7 @@ export default function NewInstitutionPage() {
                 type="text"
                 value={form.location.city}
                 onChange={(e) => updateField("location.city", e.target.value)}
+                onBlur={(e) => updateField("location.city", properCaseName(e.target.value))}
                 placeholder="Jaipur"
                 className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
               />
@@ -308,6 +313,7 @@ export default function NewInstitutionPage() {
                 required
                 value={form.contactInfo.phone}
                 onChange={(e) => updateField("contactInfo.phone", e.target.value)}
+                onBlur={(e) => updateField("contactInfo.phone", trimWhitespace(e.target.value))}
                 className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
               />
             </div>
@@ -326,6 +332,7 @@ export default function NewInstitutionPage() {
                 type="text"
                 value={form.contactInfo.address}
                 onChange={(e) => updateField("contactInfo.address", e.target.value)}
+                onBlur={(e) => updateField("contactInfo.address", trimWhitespace(e.target.value))}
                 className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
               />
             </div>

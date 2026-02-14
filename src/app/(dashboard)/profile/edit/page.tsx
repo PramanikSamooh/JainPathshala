@@ -6,6 +6,7 @@ import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { getClientDb } from "@/lib/firebase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useInstitution } from "@/contexts/InstitutionContext";
+import { properCaseName } from "@/lib/utils/normalize";
 import PhoneInput from "@/components/PhoneInput";
 import Link from "next/link";
 
@@ -159,6 +160,7 @@ export default function ProfileEditPage() {
             required
             value={form.displayName}
             onChange={(e) => setForm((f) => ({ ...f, displayName: e.target.value }))}
+            onBlur={(e) => setForm((f) => ({ ...f, displayName: properCaseName(e.target.value) }))}
             className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
           />
         </div>
@@ -235,6 +237,7 @@ export default function ProfileEditPage() {
                     type="text"
                     value={guardianForm.name}
                     onChange={(e) => setGuardianForm((f) => ({ ...f, name: e.target.value }))}
+                    onBlur={(e) => setGuardianForm((f) => ({ ...f, name: properCaseName(e.target.value) }))}
                     className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
                     placeholder="Guardian's full name"
                   />

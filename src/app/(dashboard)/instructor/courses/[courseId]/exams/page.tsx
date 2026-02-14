@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import RichTextEditor from "@/components/RichTextEditor";
+import SafeHtml from "@/components/SafeHtml";
 
 interface Exam {
   id: string;
@@ -513,7 +514,10 @@ export default function InstructorExamsPage() {
                     {exam.timeLimitMinutes ? ` · ${exam.timeLimitMinutes} min` : ""}
                   </p>
                   {exam.description && (
-                    <p className="mt-1 text-sm text-[var(--muted-foreground)]">{exam.description}</p>
+                    <SafeHtml
+                      html={exam.description}
+                      className="mt-1 text-sm text-[var(--muted-foreground)]"
+                    />
                   )}
                 </div>
                 <div className="flex items-center gap-2">

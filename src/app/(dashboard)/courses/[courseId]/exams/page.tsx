@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import SafeHtml from "@/components/SafeHtml";
 
 interface Exam {
   id: string;
@@ -325,7 +326,10 @@ export default function StudentExamsPage() {
                       &middot; {examAttempts.length}/{exam.maxAttempts} attempts used
                     </p>
                     {exam.description && (
-                      <p className="mt-2 text-sm text-[var(--muted-foreground)]">{exam.description}</p>
+                      <SafeHtml
+                        html={exam.description}
+                        className="mt-2 text-sm text-[var(--muted-foreground)]"
+                      />
                     )}
                   </div>
 

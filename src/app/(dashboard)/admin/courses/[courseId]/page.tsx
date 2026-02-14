@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import RichTextEditor from "@/components/RichTextEditor";
+import { trimWhitespace } from "@/lib/utils/normalize";
 
 interface InstructorOption {
   uid: string;
@@ -205,6 +206,7 @@ export default function AdminCourseEditPage() {
                 type="text"
                 value={course.title}
                 onChange={(e) => setCourse({ ...course, title: e.target.value })}
+                onBlur={(e) => setCourse((c) => c ? { ...c, title: trimWhitespace(e.target.value) } : c)}
                 className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
               />
             </div>
@@ -263,6 +265,7 @@ export default function AdminCourseEditPage() {
                 onChange={(e) =>
                   setCourse({ ...course, shortDescription: e.target.value })
                 }
+                onBlur={(e) => setCourse((c) => c ? { ...c, shortDescription: trimWhitespace(e.target.value) } : c)}
                 className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
               />
             </div>

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import VideoPlayer from "@/components/VideoPlayer";
+import SafeHtml from "@/components/SafeHtml";
 import CheckpointOverlay from "@/components/CheckpointOverlay";
 import { useVideoProgress } from "@/hooks/useVideoProgress";
 
@@ -552,9 +553,9 @@ export default function LearnPage() {
             </div>
 
             {activeLesson.type === "text" && activeLesson.textContent && (
-              <div
-                className="prose prose-sm max-w-none rounded-xl border border-[var(--border)] bg-[var(--card)] p-6"
-                dangerouslySetInnerHTML={{ __html: activeLesson.textContent }}
+              <SafeHtml
+                html={activeLesson.textContent}
+                className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6"
               />
             )}
 
