@@ -130,7 +130,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
           </>
         ) : (
           navItems.map((item) => (
-            <a
+            <Link
               key={item.href}
               href={item.href}
               onClick={onClose}
@@ -141,7 +141,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
               }`}
             >
               {item.label}
-            </a>
+            </Link>
           ))
         )}
         <div className="pt-2 border-t border-[var(--border)] mt-2">
@@ -223,13 +223,13 @@ function ProfileCompleteGuard({ children }: { children: React.ReactNode }) {
           <p className="mt-2 text-sm text-[var(--muted-foreground)]">
             Please complete your profile to continue using the platform.
           </p>
-          <a
+          <Link
             href="/complete-profile"
             className="mt-4 inline-block rounded-lg px-6 py-2.5 text-sm font-medium text-white"
             style={{ backgroundColor: "var(--brand-primary)" }}
           >
             Complete Profile
-          </a>
+          </Link>
         </div>
       </div>
     );

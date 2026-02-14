@@ -41,6 +41,11 @@ export default function DashboardPage() {
   const [certificateCount, setCertificateCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  const isAdminOrInstructor =
+    userData?.role === "super_admin" ||
+    userData?.role === "institution_admin" ||
+    userData?.role === "instructor";
+
   // Redirect admin/instructor to their landing page
   useEffect(() => {
     if (authLoading || !userData) return;
@@ -52,6 +57,12 @@ export default function DashboardPage() {
   }, [authLoading, userData, router]);
 
   useEffect(() => {
+    // Don't fetch student dashboard data for admin/instructor — they'll be redirected
+    if (isAdminOrInstructor) {
+      setLoading(false);
+      return;
+    }
+
     async function fetchDashboardData() {
       try {
         const [enrollRes, certRes] = await Promise.all([
@@ -73,9 +84,17 @@ export default function DashboardPage() {
       }
     }
 
-    // Fire immediately — API routes handle auth via session cookie
     fetchDashboardData();
-  }, []);
+  }, [isAdminOrInstructor]);
+
+  // Show brief loading while redirecting admin/instructor
+  if (authLoading || isAdminOrInstructor) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="text-[var(--muted-foreground)]">Redirecting...</div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
