@@ -26,14 +26,22 @@ export async function createMeetSession(
     endTime: string;
     timeZone: string;
     attendeeEmails: string[];
+    coHostEmails?: string[]; // Instructors who can manage participants
     requestId: string; // Unique ID for idempotency
   }
 ) {
   const calendar = getCalendarClient(serviceAccountKey, adminEmail);
 
+  // Build attendee list: co-hosts (instructors) first, then students
+  const attendees = [
+    ...(params.coHostEmails || []).map((email) => ({ email })),
+    ...params.attendeeEmails.map((email) => ({ email })),
+  ];
+
   const event = await calendar.events.insert({
     calendarId: adminEmail,
     conferenceDataVersion: 1,
+    sendUpdates: "all",
     requestBody: {
       summary: params.summary,
       description: params.description,
@@ -45,7 +53,8 @@ export async function createMeetSession(
         dateTime: params.endTime,
         timeZone: params.timeZone,
       },
-      attendees: params.attendeeEmails.map((email) => ({ email })),
+      attendees,
+      guestsCanModify: true,
       conferenceData: {
         createRequest: {
           requestId: params.requestId,

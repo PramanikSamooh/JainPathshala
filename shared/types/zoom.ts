@@ -24,6 +24,7 @@ export interface ZoomMeetingSettings {
   registration_type: 0 | 1 | 2; // 0=none, 1=register-once, 2=register-each
   approval_type: 0 | 1 | 2; // 0=auto, 1=manual, 2=no-registration
   auto_recording: "local" | "cloud" | "none";
+  alternative_hosts: string; // Comma-separated emails of alternative hosts
 }
 
 export interface ZoomMeeting {

@@ -106,6 +106,37 @@ export async function POST(
     const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
     const adminEmail = institution.googleWorkspace?.adminEmail;
 
+    // Validate required credentials for auto-create platforms
+    if (platform === "google_meet") {
+      if (!serviceAccountKey) {
+        return NextResponse.json(
+          { error: "Google service account key is not configured. Contact your administrator." },
+          { status: 400 }
+        );
+      }
+      if (!adminEmail) {
+        return NextResponse.json(
+          { error: "Google Workspace admin email is not configured for this institution. Set it in institution settings." },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Get instructor emails for co-host / alternative host
+    const instructorIds: string[] = course.instructorIds || [];
+    const instructorEmails: string[] = [];
+
+    if (instructorIds.length > 0) {
+      const instructorDocs = await Promise.all(
+        instructorIds.map((uid) => db.collection("users").doc(uid).get())
+      );
+      instructorDocs.forEach((doc) => {
+        if (doc.exists && doc.data()!.email) {
+          instructorEmails.push(doc.data()!.email);
+        }
+      });
+    }
+
     // Get enrolled student emails for attendees
     const enrollmentsSnap = await db
       .collection("enrollments")
@@ -136,23 +167,29 @@ export async function POST(
       meetLink = customMeetLink;
     }
 
-    // Create Calendar event with Meet link if using Google Meet and credentials are configured
-    if (platform === "google_meet" && serviceAccountKey && adminEmail) {
+    // Create Calendar event with Meet link if using Google Meet
+    if (platform === "google_meet") {
       try {
         const tz = timeZone || "Asia/Kolkata";
-        const result = await createMeetSession(serviceAccountKey, adminEmail, {
+        const result = await createMeetSession(serviceAccountKey!, adminEmail!, {
           summary: `${course.title}: ${topic}`,
           description: `Bootcamp session for ${course.title}`,
           startTime: `${sessionDate}T${startTime}:00`,
           endTime: `${sessionDate}T${endTime}:00`,
           timeZone: tz,
           attendeeEmails,
+          coHostEmails: instructorEmails,
           requestId: `session-${courseId}-${sessionDate}-${Date.now()}`,
         });
         calendarEventId = result.eventId;
         meetLink = result.meetLink;
       } catch (err) {
         console.error("Calendar event creation failed:", err);
+        const message = err instanceof Error ? err.message : "Unknown error";
+        return NextResponse.json(
+          { error: `Failed to create Google Meet link: ${message}` },
+          { status: 500 }
+        );
       }
     }
 
@@ -196,6 +233,11 @@ export async function POST(
         }
       } catch (err) {
         console.error("Zoom meeting creation failed:", err);
+        const message = err instanceof Error ? err.message : "Unknown error";
+        return NextResponse.json(
+          { error: `Failed to create Zoom meeting: ${message}` },
+          { status: 500 }
+        );
       }
     }
 

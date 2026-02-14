@@ -247,6 +247,13 @@ export default function SessionsPage() {
                 <option value="custom_link">Custom Link</option>
               </select>
             </div>
+            {form.meetingPlatform === "google_meet" && (
+              <div className="flex items-center">
+                <p className="text-xs text-[var(--muted-foreground)]">
+                  Google Meet link will be created automatically via Calendar. Enrolled students will be added as attendees.
+                </p>
+              </div>
+            )}
             {form.meetingPlatform === "zoom" && (
               <div className="flex items-center">
                 <p className="text-xs text-[var(--muted-foreground)]">
