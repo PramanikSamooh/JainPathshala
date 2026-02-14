@@ -35,11 +35,21 @@ function ExpiryBadge({ days }: { days: number | null }) {
 }
 
 export default function DashboardPage() {
-  const { userData } = useAuth();
+  const { userData, loading: authLoading } = useAuth();
   const router = useRouter();
   const [enrollments, setEnrollments] = useState<EnrollmentWithCourse[]>([]);
   const [certificateCount, setCertificateCount] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  // Redirect admin/instructor to their landing page
+  useEffect(() => {
+    if (authLoading || !userData) return;
+    if (userData.role === "super_admin" || userData.role === "institution_admin") {
+      router.replace("/admin/courses");
+    } else if (userData.role === "instructor") {
+      router.replace("/instructor/courses");
+    }
+  }, [authLoading, userData, router]);
 
   useEffect(() => {
     async function fetchDashboardData() {

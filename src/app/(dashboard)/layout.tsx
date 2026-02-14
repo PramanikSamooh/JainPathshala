@@ -60,7 +60,7 @@ function NotificationToggle() {
 }
 
 function Sidebar({ onClose }: { onClose?: () => void }) {
-  const { userData, firebaseUser } = useAuth();
+  const { userData, firebaseUser, loading: authLoading } = useAuth();
   const { institution } = useInstitution();
   const router = useRouter();
   const pathname = usePathname();
@@ -121,20 +121,29 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
       </div>
 
       <nav className="mt-2 flex-1 space-y-1 px-2">
-        {navItems.map((item) => (
-          <a
-            key={item.href}
-            href={item.href}
-            onClick={onClose}
-            className={`block rounded-lg px-3 py-2 text-sm transition ${
-              pathname.startsWith(item.href)
-                ? "bg-[var(--brand-primary)] text-white"
-                : "text-[var(--foreground)] hover:bg-[var(--muted)]"
-            }`}
-          >
-            {item.label}
-          </a>
-        ))}
+        {authLoading || !userData ? (
+          /* Skeleton placeholders while auth loads */
+          <>
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-9 rounded-lg bg-[var(--muted)] animate-pulse" />
+            ))}
+          </>
+        ) : (
+          navItems.map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              onClick={onClose}
+              className={`block rounded-lg px-3 py-2 text-sm transition ${
+                pathname.startsWith(item.href)
+                  ? "bg-[var(--brand-primary)] text-white"
+                  : "text-[var(--foreground)] hover:bg-[var(--muted)]"
+              }`}
+            >
+              {item.label}
+            </a>
+          ))
+        )}
         <div className="pt-2 border-t border-[var(--border)] mt-2">
           <NotificationToggle />
         </div>
