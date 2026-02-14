@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
       const response = NextResponse.json({ memberships: enriched });
       response.headers.set(
         "Cache-Control",
-        "private, max-age=10, stale-while-revalidate=30"
+        "private, no-cache, no-store, must-revalidate"
       );
       return response;
     }

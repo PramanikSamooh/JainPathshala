@@ -207,9 +207,15 @@ export default function AdminAdmissionsPage() {
             a.userId === userId ? { ...a, status: "approved" } : a
           )
         );
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(`Failed to approve: ${data.error || res.statusText}`);
+        fetchAdmissions();
       }
     } catch (err) {
       console.error("Failed to approve:", err);
+      alert("Failed to approve. Please try again.");
+      fetchAdmissions();
     } finally {
       setActionLoading(null);
     }
@@ -239,9 +245,15 @@ export default function AdminAdmissionsPage() {
               : a
           )
         );
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(`Failed to reject: ${data.error || res.statusText}`);
+        fetchAdmissions();
       }
     } catch (err) {
       console.error("Failed to reject:", err);
+      alert("Failed to reject. Please try again.");
+      fetchAdmissions();
     } finally {
       setActionLoading(null);
     }
@@ -278,9 +290,15 @@ export default function AdminAdmissionsPage() {
               : a
           )
         );
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(`Failed to transfer: ${data.error || res.statusText}`);
+        fetchAdmissions();
       }
     } catch (err) {
       console.error("Failed to transfer:", err);
+      alert("Failed to transfer. Please try again.");
+      fetchAdmissions();
     } finally {
       setActionLoading(null);
     }
