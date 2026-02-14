@@ -92,6 +92,7 @@ export default function LearnPage() {
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
   const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(new Set());
+  const [lessonMenuOpen, setLessonMenuOpen] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -281,6 +282,7 @@ export default function LearnPage() {
     }
     setActiveCheckpoint(null);
     setActiveLesson(lesson);
+    setLessonMenuOpen(false);
   }
 
   function getAllLessons(): Lesson[] {
@@ -329,146 +331,187 @@ export default function LearnPage() {
   const completedCount = completedLessonIds.size;
   const progressPercent = enrollment?.progress.percentComplete ?? (totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0);
 
-  return (
-    <div className="flex gap-6 max-w-6xl">
-      {/* Sidebar — Module & Lesson navigation */}
-      <div className="w-72 shrink-0">
-        <button
-          onClick={() => router.push(`/courses/${courseId}`)}
-          className="mb-4 text-sm text-[var(--muted-foreground)] hover:underline"
-        >
-          &larr; Back to course
-        </button>
+  const sidebarContent = (
+    <>
+      <button
+        onClick={() => router.push(`/courses/${courseId}`)}
+        className="mb-4 text-sm text-[var(--muted-foreground)] hover:underline"
+      >
+        &larr; Back to course
+      </button>
 
-        <h2 className="text-lg font-bold mb-1">{course.title}</h2>
+      <h2 className="text-lg font-bold mb-1">{course.title}</h2>
 
-        {/* Progress bar */}
+      {/* Progress bar */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between text-xs text-[var(--muted-foreground)] mb-1">
+          <span>{completedCount} / {totalLessons} lessons</span>
+          <span>{progressPercent}%</span>
+        </div>
+        <div className="h-2 rounded-full bg-[var(--muted)] overflow-hidden">
+          <div
+            className="h-full rounded-full bg-[var(--brand-primary)] transition-all"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Live Sessions */}
+      {sessions.length > 0 && (
         <div className="mb-4">
-          <div className="flex items-center justify-between text-xs text-[var(--muted-foreground)] mb-1">
-            <span>{completedCount} / {totalLessons} lessons</span>
-            <span>{progressPercent}%</span>
-          </div>
-          <div className="h-2 rounded-full bg-[var(--muted)] overflow-hidden">
-            <div
-              className="h-full rounded-full bg-[var(--brand-primary)] transition-all"
-              style={{ width: `${progressPercent}%` }}
-            />
+          <h3 className="text-xs font-semibold uppercase text-[var(--muted-foreground)] mb-2">
+            Live Sessions
+          </h3>
+          <div className="space-y-2">
+            {sessions
+              .sort((a, b) => a.sessionDate.localeCompare(b.sessionDate))
+              .slice(0, 5)
+              .map((session) => {
+                const sessionDate = new Date(session.sessionDate + "T" + session.startTime);
+                const isUpcoming = sessionDate > new Date();
+                return (
+                  <div
+                    key={session.id}
+                    className={`rounded-lg border px-3 py-2 text-xs ${
+                      isUpcoming
+                        ? "border-blue-200 bg-blue-50"
+                        : "border-[var(--border)]"
+                    }`}
+                  >
+                    <div className="font-medium">{session.topic}</div>
+                    <div className="text-[var(--muted-foreground)] mt-0.5">
+                      {session.sessionDate} &middot; {session.startTime} - {session.endTime}
+                    </div>
+                    {session.meetLink && isUpcoming && (
+                      <a
+                        href={session.meetLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`mt-1 inline-block hover:underline ${
+                          session.meetingPlatform === "zoom"
+                            ? "text-[#2D8CFF]"
+                            : "text-blue-600"
+                        }`}
+                      >
+                        {session.meetingPlatform === "zoom"
+                          ? "Join Zoom Meeting"
+                          : "Join Meet"}
+                      </a>
+                    )}
+                  </div>
+                );
+              })}
           </div>
         </div>
+      )}
 
-        {/* Live Sessions */}
-        {sessions.length > 0 && (
-          <div className="mb-4">
-            <h3 className="text-xs font-semibold uppercase text-[var(--muted-foreground)] mb-2">
-              Live Sessions
-            </h3>
-            <div className="space-y-2">
-              {sessions
-                .sort((a, b) => a.sessionDate.localeCompare(b.sessionDate))
-                .slice(0, 5)
-                .map((session) => {
-                  const sessionDate = new Date(session.sessionDate + "T" + session.startTime);
-                  const isUpcoming = sessionDate > new Date();
+      <button
+        onClick={() => router.push(`/courses/${courseId}/exams`)}
+        className="mb-4 w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm text-left hover:bg-[var(--muted)]"
+      >
+        Exams &amp; Assessments
+      </button>
+
+      <div className="space-y-3">
+        {course.modules.map((module, mi) => {
+          const moduleLessonsCompleted = module.lessons.filter((l) =>
+            completedLessonIds.has(l.id)
+          ).length;
+          const isModuleComplete = module.lessons.length > 0 && moduleLessonsCompleted === module.lessons.length;
+
+          return (
+            <div key={module.id}>
+              <h3 className="text-xs font-semibold uppercase text-[var(--muted-foreground)] mb-1 flex items-center gap-1">
+                {isModuleComplete && (
+                  <span className="text-green-500" title="Module complete">&#10003;</span>
+                )}
+                Module {mi + 1}: {module.title}
+                <span className="ml-auto font-normal">
+                  {moduleLessonsCompleted}/{module.lessons.length}
+                </span>
+              </h3>
+              <ul className="space-y-0.5">
+                {module.lessons.map((lesson) => {
+                  const isCompleted = completedLessonIds.has(lesson.id);
+                  const isActive = activeLesson?.id === lesson.id;
+
                   return (
-                    <div
-                      key={session.id}
-                      className={`rounded-lg border px-3 py-2 text-xs ${
-                        isUpcoming
-                          ? "border-blue-200 bg-blue-50"
-                          : "border-[var(--border)]"
-                      }`}
-                    >
-                      <div className="font-medium">{session.topic}</div>
-                      <div className="text-[var(--muted-foreground)] mt-0.5">
-                        {session.sessionDate} &middot; {session.startTime} - {session.endTime}
-                      </div>
-                      {session.meetLink && isUpcoming && (
-                        <a
-                          href={session.meetLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={`mt-1 inline-block hover:underline ${
-                            session.meetingPlatform === "zoom"
-                              ? "text-[#2D8CFF]"
-                              : "text-blue-600"
+                    <li key={lesson.id}>
+                      <button
+                        onClick={() => navigateToLesson(lesson)}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
+                          isActive
+                            ? "bg-[var(--brand-primary)] text-white"
+                            : "hover:bg-[var(--muted)]"
+                        }`}
+                      >
+                        {/* Completion indicator */}
+                        <span
+                          className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 text-xs ${
+                            isCompleted
+                              ? isActive
+                                ? "bg-white text-[var(--brand-primary)] border-white"
+                                : "bg-green-500 text-white border-green-500"
+                              : isActive
+                                ? "border-white/50"
+                                : "border-[var(--border)]"
                           }`}
                         >
-                          {session.meetingPlatform === "zoom"
-                            ? "Join Zoom Meeting"
-                            : "Join Meet"}
-                        </a>
-                      )}
-                    </div>
+                          {isCompleted && "✓"}
+                        </span>
+                        <span className="truncate">{lesson.title}</span>
+                      </button>
+                    </li>
                   );
                 })}
+              </ul>
             </div>
-          </div>
-        )}
+          );
+        })}
+      </div>
+    </>
+  );
 
+  return (
+    <div className="flex flex-col lg:flex-row gap-6 max-w-6xl">
+      {/* Mobile lesson bar + slide-out drawer */}
+      <div className="lg:hidden">
         <button
-          onClick={() => router.push(`/courses/${courseId}/exams`)}
-          className="mb-4 w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm text-left hover:bg-[var(--muted)]"
+          onClick={() => setLessonMenuOpen(true)}
+          className="flex w-full items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-sm"
         >
-          Exams &amp; Assessments
+          <span className="font-medium truncate">{activeLesson?.title || "Select a lesson"}</span>
+          <span className="ml-2 shrink-0 text-[var(--muted-foreground)]">
+            {completedCount}/{totalLessons} &middot; {progressPercent}%
+          </span>
         </button>
+      </div>
 
-        <div className="space-y-3">
-          {course.modules.map((module, mi) => {
-            const moduleLessonsCompleted = module.lessons.filter((l) =>
-              completedLessonIds.has(l.id)
-            ).length;
-            const isModuleComplete = module.lessons.length > 0 && moduleLessonsCompleted === module.lessons.length;
+      {/* Mobile slide-out sidebar */}
+      {lessonMenuOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+            onClick={() => setLessonMenuOpen(false)}
+          />
+          <aside className="fixed inset-y-0 left-0 z-50 w-72 overflow-y-auto bg-[var(--card)] p-4 shadow-xl lg:hidden">
+            <button
+              onClick={() => setLessonMenuOpen(false)}
+              className="mb-4 flex items-center gap-2 text-sm text-[var(--muted-foreground)] hover:underline"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+              Close
+            </button>
+            {sidebarContent}
+          </aside>
+        </>
+      )}
 
-            return (
-              <div key={module.id}>
-                <h3 className="text-xs font-semibold uppercase text-[var(--muted-foreground)] mb-1 flex items-center gap-1">
-                  {isModuleComplete && (
-                    <span className="text-green-500" title="Module complete">&#10003;</span>
-                  )}
-                  Module {mi + 1}: {module.title}
-                  <span className="ml-auto font-normal">
-                    {moduleLessonsCompleted}/{module.lessons.length}
-                  </span>
-                </h3>
-                <ul className="space-y-0.5">
-                  {module.lessons.map((lesson) => {
-                    const isCompleted = completedLessonIds.has(lesson.id);
-                    const isActive = activeLesson?.id === lesson.id;
-
-                    return (
-                      <li key={lesson.id}>
-                        <button
-                          onClick={() => navigateToLesson(lesson)}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
-                            isActive
-                              ? "bg-[var(--brand-primary)] text-white"
-                              : "hover:bg-[var(--muted)]"
-                          }`}
-                        >
-                          {/* Completion indicator */}
-                          <span
-                            className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 text-xs ${
-                              isCompleted
-                                ? isActive
-                                  ? "bg-white text-[var(--brand-primary)] border-white"
-                                  : "bg-green-500 text-white border-green-500"
-                                : isActive
-                                  ? "border-white/50"
-                                  : "border-[var(--border)]"
-                            }`}
-                          >
-                            {isCompleted && "✓"}
-                          </span>
-                          <span className="truncate">{lesson.title}</span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            );
-          })}
-        </div>
+      {/* Desktop sidebar — always visible */}
+      <div className="hidden lg:block w-72 shrink-0">
+        {sidebarContent}
       </div>
 
       {/* Main content area */}

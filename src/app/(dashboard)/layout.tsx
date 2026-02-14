@@ -72,15 +72,22 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
   const isInstructorOrAbove =
     isAdmin || userData?.role === "instructor";
 
-  const navItems = [
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/courses", label: "Courses" },
-    { href: "/certificates", label: "Certificates" },
-    ...(isInstructorOrAbove
-      ? [{ href: "/instructor/courses", label: "Instructor" }]
-      : []),
-    ...(isAdmin ? [{ href: "/admin/courses", label: "Admin Panel" }] : []),
-  ];
+  const navItems = isAdmin
+    ? [
+        { href: "/admin/courses", label: "Admin Panel" },
+        { href: "/instructor/courses", label: "Instructor" },
+        { href: "/courses", label: "Browse Courses" },
+      ]
+    : isInstructorOrAbove
+      ? [
+          { href: "/instructor/courses", label: "Instructor" },
+          { href: "/courses", label: "Browse Courses" },
+        ]
+      : [
+          { href: "/dashboard", label: "Dashboard" },
+          { href: "/courses", label: "Courses" },
+          { href: "/certificates", label: "Certificates" },
+        ];
 
   async function handleSignOut() {
     await signOut();
