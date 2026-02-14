@@ -24,7 +24,7 @@ export async function GET(
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const decoded = await getAdminAuth().verifySessionCookie(sessionCookie, true);
+    const decoded = await getAdminAuth().verifySessionCookie(sessionCookie, false);
     const db = getAdminDb();
 
     const docId = `${decoded.uid}_${lessonId}`;

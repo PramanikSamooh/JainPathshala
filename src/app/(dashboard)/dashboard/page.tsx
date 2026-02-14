@@ -35,7 +35,7 @@ function ExpiryBadge({ days }: { days: number | null }) {
 }
 
 export default function DashboardPage() {
-  const { userData, loading: authLoading } = useAuth();
+  const { userData } = useAuth();
   const router = useRouter();
   const [enrollments, setEnrollments] = useState<EnrollmentWithCourse[]>([]);
   const [certificateCount, setCertificateCount] = useState(0);
@@ -45,8 +45,8 @@ export default function DashboardPage() {
     async function fetchDashboardData() {
       try {
         const [enrollRes, certRes] = await Promise.all([
-          fetch("/api/enrollments?include=course", { cache: "no-store" }),
-          fetch("/api/certificates", { cache: "no-store" }),
+          fetch("/api/enrollments?include=course"),
+          fetch("/api/certificates"),
         ]);
         if (enrollRes.ok) {
           const data = await enrollRes.json();
@@ -63,10 +63,11 @@ export default function DashboardPage() {
       }
     }
 
-    if (!authLoading) fetchDashboardData();
-  }, [authLoading]);
+    // Fire immediately — API routes handle auth via session cookie
+    fetchDashboardData();
+  }, []);
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
         <div className="text-[var(--muted-foreground)]">Loading...</div>

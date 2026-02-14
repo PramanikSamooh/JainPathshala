@@ -44,10 +44,32 @@ export function InstitutionProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      // Check sessionStorage cache (30-minute TTL)
+      const cacheKey = `inst_${institutionId}`;
+      try {
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached);
+          if (Date.now() - timestamp < 30 * 60 * 1000) {
+            setInstitution(data as Institution);
+            setLoading(false);
+            return;
+          }
+        }
+      } catch {
+        // sessionStorage unavailable or corrupt — continue to fetch
+      }
+
       try {
         const instDoc = await getDoc(doc(getClientDb(), "institutions", institutionId));
         if (instDoc.exists()) {
-          setInstitution({ id: instDoc.id, ...instDoc.data() } as Institution);
+          const data = { id: instDoc.id, ...instDoc.data() } as Institution;
+          setInstitution(data);
+          try {
+            sessionStorage.setItem(cacheKey, JSON.stringify({ data, timestamp: Date.now() }));
+          } catch {
+            // sessionStorage full or unavailable — ignore
+          }
         }
       } catch (err) {
         console.error("Error fetching institution:", err);

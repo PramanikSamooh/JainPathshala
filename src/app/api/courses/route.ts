@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const decoded = await getAdminAuth().verifySessionCookie(sessionCookie, true);
+    const decoded = await getAdminAuth().verifySessionCookie(sessionCookie, false);
     const db = getAdminDb();
     const { searchParams } = request.nextUrl;
 
@@ -65,7 +65,9 @@ export async function GET(request: NextRequest) {
       ...doc.data(),
     }));
 
-    return NextResponse.json({ courses });
+    const response = NextResponse.json({ courses });
+    response.headers.set("Cache-Control", "private, max-age=30, stale-while-revalidate=60");
+    return response;
   } catch (err) {
     console.error("GET /api/courses error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

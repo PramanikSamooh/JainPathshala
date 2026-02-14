@@ -58,6 +58,15 @@ export interface InstitutionContactInfo {
   website: string;
 }
 
+export interface InstitutionLocation {
+  country: string;
+  state: string;
+  city: string;
+  lat: number | null;
+  lng: number | null;
+  timezone: string; // e.g. "Asia/Kolkata"
+}
+
 export interface Institution {
   id: string;
   name: string;
@@ -65,6 +74,8 @@ export interface Institution {
   domains: string[];
   primaryDomain: string;
   allowedEmailDomains: string[];
+  inviteCode: string;
+  location: InstitutionLocation | null;
   branding: InstitutionBranding;
   googleWorkspace: InstitutionGoogleWorkspace;
   razorpay: InstitutionRazorpay;

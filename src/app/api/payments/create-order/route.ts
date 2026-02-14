@@ -32,9 +32,25 @@ export async function POST(request: NextRequest) {
 
     const course = courseDoc.data()!;
 
-    // Check institution match
-    if (course.institutionId !== decoded.institutionId) {
-      return NextResponse.json({ error: "Course not in your institution" }, { status: 403 });
+    // Enrollment permission rules based on course type:
+    // - self_paced & bootcamp: open to any authenticated user
+    // - instructor_led: requires an approved membership in the course's institution
+    const courseType = course.type || "self_paced";
+
+    if (courseType === "instructor_led") {
+      const membershipDoc = await db
+        .collection("users")
+        .doc(decoded.uid)
+        .collection("memberships")
+        .doc(course.institutionId)
+        .get();
+
+      if (!membershipDoc.exists || membershipDoc.data()?.status !== "approved") {
+        return NextResponse.json(
+          { error: "You must be an approved member of this institution to enroll in instructor-led courses" },
+          { status: 403 }
+        );
+      }
     }
 
     // Check if already enrolled

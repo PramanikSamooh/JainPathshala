@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const decoded = await getAdminAuth().verifySessionCookie(sessionCookie, true);
+    const decoded = await getAdminAuth().verifySessionCookie(sessionCookie, false);
     const db = getAdminDb();
     const { searchParams } = request.nextUrl;
 
@@ -116,10 +116,14 @@ export async function GET(request: NextRequest) {
         })
         .filter(Boolean);
 
-      return NextResponse.json({ enrollments: enriched });
+      const response = NextResponse.json({ enrollments: enriched });
+      response.headers.set("Cache-Control", "private, max-age=10, stale-while-revalidate=30");
+      return response;
     }
 
-    return NextResponse.json({ enrollments });
+    const response = NextResponse.json({ enrollments });
+    response.headers.set("Cache-Control", "private, max-age=10, stale-while-revalidate=30");
+    return response;
   } catch (err) {
     console.error("GET /api/enrollments error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

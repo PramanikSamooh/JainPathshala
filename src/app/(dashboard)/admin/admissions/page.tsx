@@ -1,0 +1,571 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+
+/* ---------- Types ---------- */
+
+interface AdmissionItem {
+  userId: string;
+  displayName: string;
+  email: string;
+  city: string | null;
+  state: string | null;
+  joinMethod: string;
+  status: string;
+  requestedAt: { _seconds: number; _nanoseconds: number } | string | null;
+  reviewedAt: { _seconds: number; _nanoseconds: number } | string | null;
+  reviewNote: string | null;
+  transferredTo: string | null;
+}
+
+interface InstitutionOption {
+  id: string;
+  name: string;
+}
+
+/* ---------- Constants ---------- */
+
+const STATUS_TABS = ["all", "pending", "approved", "rejected", "transferred"] as const;
+type StatusTab = (typeof STATUS_TABS)[number];
+
+const STATUS_COLORS: Record<string, string> = {
+  pending: "bg-yellow-50 text-yellow-700",
+  approved: "bg-green-50 text-green-700",
+  rejected: "bg-red-50 text-red-700",
+  transferred: "bg-blue-50 text-blue-700",
+};
+
+const JOIN_METHOD_LABELS: Record<string, string> = {
+  browse: "Browse",
+  invite_code: "Invite Code",
+  email_domain: "Email Domain",
+  admin_added: "Admin Added",
+};
+
+/* ---------- Helpers ---------- */
+
+function formatTimestamp(val: unknown): string {
+  if (!val) return "\u2014";
+  if (typeof val === "object" && val !== null && "_seconds" in val) {
+    return new Date(
+      (val as { _seconds: number })._seconds * 1000
+    ).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  }
+  const d = new Date(val as string | number);
+  return isNaN(d.getTime()) ? "\u2014" : d.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function isToday(val: unknown): boolean {
+  if (!val) return false;
+  let d: Date;
+  if (typeof val === "object" && val !== null && "_seconds" in val) {
+    d = new Date((val as { _seconds: number })._seconds * 1000);
+  } else {
+    d = new Date(val as string | number);
+  }
+  if (isNaN(d.getTime())) return false;
+  const now = new Date();
+  return (
+    d.getDate() === now.getDate() &&
+    d.getMonth() === now.getMonth() &&
+    d.getFullYear() === now.getFullYear()
+  );
+}
+
+/* ---------- Component ---------- */
+
+export default function AdminAdmissionsPage() {
+  const { userData, loading: authLoading } = useAuth();
+  const router = useRouter();
+
+  const [admissions, setAdmissions] = useState<AdmissionItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<StatusTab>("pending");
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Reject modal state
+  const [rejectModal, setRejectModal] = useState<{
+    open: boolean;
+    userId: string;
+    note: string;
+  }>({ open: false, userId: "", note: "" });
+
+  // Transfer modal state
+  const [transferModal, setTransferModal] = useState<{
+    open: boolean;
+    userId: string;
+    note: string;
+    institutionId: string;
+  }>({ open: false, userId: "", note: "", institutionId: "" });
+
+  const [institutions, setInstitutions] = useState<InstitutionOption[]>([]);
+  const [institutionsLoaded, setInstitutionsLoaded] = useState(false);
+
+  /* ---------- Auth guard ---------- */
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (
+      !userData ||
+      (userData.role !== "institution_admin" && userData.role !== "super_admin")
+    ) {
+      router.replace("/dashboard");
+    }
+  }, [authLoading, userData, router]);
+
+  /* ---------- Fetch admissions ---------- */
+
+  const fetchAdmissions = useCallback(async () => {
+    setLoading(true);
+    try {
+      const statusParam = activeTab === "all" ? "" : `?status=${activeTab}`;
+      const res = await fetch(`/api/memberships${statusParam}`, {
+        cache: "no-store",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAdmissions(data.memberships || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch admissions:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (
+      !authLoading &&
+      userData &&
+      (userData.role === "institution_admin" || userData.role === "super_admin")
+    ) {
+      fetchAdmissions();
+    }
+  }, [authLoading, userData, fetchAdmissions]);
+
+  /* ---------- Fetch institutions (for transfer modal) ---------- */
+
+  const fetchInstitutions = useCallback(async () => {
+    if (institutionsLoaded) return;
+    try {
+      const res = await fetch("/api/institutions", { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        setInstitutions(
+          (data.institutions || []).map((inst: { id: string; name: string }) => ({
+            id: inst.id,
+            name: inst.name,
+          }))
+        );
+        setInstitutionsLoaded(true);
+      }
+    } catch (err) {
+      console.error("Failed to fetch institutions:", err);
+    }
+  }, [institutionsLoaded]);
+
+  /* ---------- Actions ---------- */
+
+  async function handleApprove(userId: string) {
+    setActionLoading(userId);
+    try {
+      const res = await fetch(`/api/memberships/${userId}/review`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, action: "approve" }),
+      });
+      if (res.ok) {
+        setAdmissions((prev) =>
+          prev.map((a) =>
+            a.userId === userId ? { ...a, status: "approved" } : a
+          )
+        );
+      }
+    } catch (err) {
+      console.error("Failed to approve:", err);
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleReject() {
+    const { userId, note } = rejectModal;
+    setActionLoading(userId);
+    setRejectModal({ open: false, userId: "", note: "" });
+    try {
+      const res = await fetch(`/api/memberships/${userId}/review`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, action: "reject", note }),
+      });
+      if (res.ok) {
+        setAdmissions((prev) =>
+          prev.map((a) =>
+            a.userId === userId
+              ? { ...a, status: "rejected", reviewNote: note }
+              : a
+          )
+        );
+      }
+    } catch (err) {
+      console.error("Failed to reject:", err);
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleTransfer() {
+    const { userId, note, institutionId } = transferModal;
+    if (!institutionId) return;
+    setActionLoading(userId);
+    setTransferModal({ open: false, userId: "", note: "", institutionId: "" });
+    try {
+      const res = await fetch(`/api/memberships/${userId}/review`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          action: "transfer",
+          transferToInstitutionId: institutionId,
+          note,
+        }),
+      });
+      if (res.ok) {
+        setAdmissions((prev) =>
+          prev.map((a) =>
+            a.userId === userId
+              ? {
+                  ...a,
+                  status: "transferred",
+                  transferredTo: institutionId,
+                  reviewNote: note,
+                }
+              : a
+          )
+        );
+      }
+    } catch (err) {
+      console.error("Failed to transfer:", err);
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  /* ---------- Computed stats ---------- */
+
+  const pendingCount = admissions.filter((a) => a.status === "pending").length;
+  const approvedToday = admissions.filter(
+    (a) => a.status === "approved" && isToday(a.reviewedAt)
+  ).length;
+  const totalApproved = admissions.filter(
+    (a) => a.status === "approved"
+  ).length;
+
+  /* ---------- Guard render ---------- */
+
+  if (
+    authLoading ||
+    !userData ||
+    (userData.role !== "institution_admin" && userData.role !== "super_admin")
+  ) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="text-[var(--muted-foreground)]">Loading...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h1 className="text-2xl font-bold">Admissions</h1>
+      <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+        Review and manage institution membership requests
+      </p>
+
+      {/* Stats Bar */}
+      <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
+          <div className="text-xs font-medium text-[var(--muted-foreground)]">
+            Pending Requests
+          </div>
+          <div className="mt-1 text-2xl font-bold text-yellow-600">
+            {pendingCount}
+          </div>
+        </div>
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
+          <div className="text-xs font-medium text-[var(--muted-foreground)]">
+            Approved Today
+          </div>
+          <div className="mt-1 text-2xl font-bold text-green-600">
+            {approvedToday}
+          </div>
+        </div>
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
+          <div className="text-xs font-medium text-[var(--muted-foreground)]">
+            Total Members
+          </div>
+          <div className="mt-1 text-2xl font-bold">{totalApproved}</div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="mt-6 flex gap-1 rounded-xl border border-[var(--border)] bg-[var(--card)] p-1">
+        {STATUS_TABS.map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`rounded-lg px-4 py-2 text-sm font-medium capitalize transition-colors ${
+              activeTab === tab
+                ? "bg-[var(--brand-primary)] text-white"
+                : "text-[var(--muted-foreground)] hover:bg-[var(--border)]"
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {/* Table */}
+      {loading ? (
+        <div className="mt-8 text-[var(--muted-foreground)]">Loading...</div>
+      ) : admissions.length === 0 ? (
+        <div className="mt-8 text-center text-[var(--muted-foreground)]">
+          No {activeTab === "all" ? "" : activeTab} admission requests found.
+        </div>
+      ) : (
+        <div className="mt-6 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[var(--border)] text-left text-[var(--muted-foreground)]">
+                <th className="pb-3 pr-4 font-medium">Student</th>
+                <th className="pb-3 pr-4 font-medium">Location</th>
+                <th className="pb-3 pr-4 font-medium">Join Method</th>
+                <th className="pb-3 pr-4 font-medium">Requested</th>
+                <th className="pb-3 pr-4 font-medium">Status</th>
+                <th className="pb-3 font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {admissions.map((admission) => (
+                <tr
+                  key={admission.userId}
+                  className="border-b border-[var(--border)] transition-colors hover:bg-[var(--card)]"
+                >
+                  {/* Student Name + Email */}
+                  <td className="py-3 pr-4">
+                    <div className="font-medium">
+                      {admission.displayName || admission.userId}
+                    </div>
+                    <div className="text-xs text-[var(--muted-foreground)]">
+                      {admission.email}
+                    </div>
+                  </td>
+
+                  {/* City/State */}
+                  <td className="py-3 pr-4 text-xs text-[var(--muted-foreground)]">
+                    {admission.city || admission.state
+                      ? [admission.city, admission.state]
+                          .filter(Boolean)
+                          .join(", ")
+                      : "\u2014"}
+                  </td>
+
+                  {/* Join Method */}
+                  <td className="py-3 pr-4">
+                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                      {JOIN_METHOD_LABELS[admission.joinMethod] ||
+                        admission.joinMethod}
+                    </span>
+                  </td>
+
+                  {/* Date Requested */}
+                  <td className="py-3 pr-4 text-xs text-[var(--muted-foreground)]">
+                    {formatTimestamp(admission.requestedAt)}
+                  </td>
+
+                  {/* Status Badge */}
+                  <td className="py-3 pr-4">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                        STATUS_COLORS[admission.status] || ""
+                      }`}
+                    >
+                      {admission.status}
+                    </span>
+                  </td>
+
+                  {/* Actions */}
+                  <td className="py-3">
+                    {admission.status === "pending" ? (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleApprove(admission.userId)}
+                          disabled={actionLoading === admission.userId}
+                          className="rounded-lg bg-green-600 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50"
+                        >
+                          {actionLoading === admission.userId
+                            ? "..."
+                            : "Approve"}
+                        </button>
+                        <button
+                          onClick={() =>
+                            setRejectModal({
+                              open: true,
+                              userId: admission.userId,
+                              note: "",
+                            })
+                          }
+                          disabled={actionLoading === admission.userId}
+                          className="rounded-lg bg-red-600 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+                        >
+                          Reject
+                        </button>
+                        <button
+                          onClick={() => {
+                            fetchInstitutions();
+                            setTransferModal({
+                              open: true,
+                              userId: admission.userId,
+                              note: "",
+                              institutionId: "",
+                            });
+                          }}
+                          disabled={actionLoading === admission.userId}
+                          className="rounded-lg bg-blue-600 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          Transfer
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-[var(--muted-foreground)]">
+                        {admission.reviewNote
+                          ? `Note: ${admission.reviewNote}`
+                          : "\u2014"}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Reject Modal */}
+      {rejectModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-lg">
+            <h2 className="text-lg font-semibold">Reject Admission</h2>
+            <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+              Optionally add a note explaining the rejection reason.
+            </p>
+            <textarea
+              value={rejectModal.note}
+              onChange={(e) =>
+                setRejectModal((prev) => ({ ...prev, note: e.target.value }))
+              }
+              placeholder="Rejection reason (optional)"
+              rows={3}
+              className="mt-4 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
+            />
+            <div className="mt-4 flex justify-end gap-3">
+              <button
+                onClick={() =>
+                  setRejectModal({ open: false, userId: "", note: "" })
+                }
+                className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-medium transition-colors hover:bg-[var(--border)]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReject}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
+              >
+                Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Transfer Modal */}
+      {transferModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-lg">
+            <h2 className="text-lg font-semibold">Transfer Student</h2>
+            <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+              Select the institution to transfer this student to.
+            </p>
+
+            <label className="mt-4 block text-sm font-medium">
+              Institution
+            </label>
+            <select
+              value={transferModal.institutionId}
+              onChange={(e) =>
+                setTransferModal((prev) => ({
+                  ...prev,
+                  institutionId: e.target.value,
+                }))
+              }
+              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
+            >
+              <option value="">Select an institution...</option>
+              {institutions.map((inst) => (
+                <option key={inst.id} value={inst.id}>
+                  {inst.name}
+                </option>
+              ))}
+            </select>
+
+            <label className="mt-4 block text-sm font-medium">
+              Note (optional)
+            </label>
+            <textarea
+              value={transferModal.note}
+              onChange={(e) =>
+                setTransferModal((prev) => ({ ...prev, note: e.target.value }))
+              }
+              placeholder="Transfer reason"
+              rows={3}
+              className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
+            />
+
+            <div className="mt-4 flex justify-end gap-3">
+              <button
+                onClick={() =>
+                  setTransferModal({
+                    open: false,
+                    userId: "",
+                    note: "",
+                    institutionId: "",
+                  })
+                }
+                className="rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-medium transition-colors hover:bg-[var(--border)]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleTransfer}
+                disabled={!transferModal.institutionId}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+              >
+                Transfer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase/admin";
 import { FieldValue } from "firebase-admin/firestore";
+import { randomBytes } from "crypto";
 import { createInstitutionSchema } from "@shared/validators/institution.validator";
 
 /**
@@ -14,16 +15,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const decoded = await getAdminAuth().verifySessionCookie(sessionCookie, true);
+    const decoded = await getAdminAuth().verifySessionCookie(sessionCookie, false);
     const db = getAdminDb();
+
+    const { searchParams } = request.nextUrl;
+    const browse = searchParams.get("browse") === "true";
 
     let query;
     if (decoded.role === "super_admin") {
       query = db.collection("institutions");
+    } else if (browse) {
+      // Allow any authenticated user to browse active institutions (for joining)
+      query = db.collection("institutions").where("isActive", "==", true);
     } else if (decoded.institutionId) {
       query = db.collection("institutions").where("__name__", "==", decoded.institutionId);
     } else {
-      return NextResponse.json({ error: "No institution assigned" }, { status: 403 });
+      // No institution yet — let them browse
+      query = db.collection("institutions").where("isActive", "==", true);
     }
 
     const snap = await query.get();
@@ -32,7 +40,9 @@ export async function GET(request: NextRequest) {
       ...doc.data(),
     }));
 
-    return NextResponse.json({ institutions });
+    const response = NextResponse.json({ institutions });
+    response.headers.set("Cache-Control", "private, max-age=300, stale-while-revalidate=600");
+    return response;
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -75,9 +85,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Generate a unique 8-char invite code
+    const inviteCode = randomBytes(4).toString("hex").toUpperCase();
+
     const docData = {
       ...data,
       id: data.slug,
+      inviteCode,
       googleWorkspace: {
         customerDomain: "",
         adminEmail: "",

@@ -16,6 +16,12 @@ export default function CompleteProfilePage() {
   const [form, setForm] = useState({
     displayName: userData?.displayName || "",
     phone: userData?.phone || "",
+    address: {
+      city: userData?.address?.city || "",
+      state: userData?.address?.state || "",
+      country: userData?.address?.country || "India",
+      pincode: userData?.address?.pincode || "",
+    },
     consent: false,
   });
   const [showGuardian, setShowGuardian] = useState(false);
@@ -47,6 +53,19 @@ export default function CompleteProfilePage() {
       setError("A valid phone number is required.");
       return;
     }
+    if (
+      !form.address.city.trim() ||
+      !form.address.state.trim() ||
+      !form.address.country.trim() ||
+      !form.address.pincode.trim()
+    ) {
+      setError("All address fields are required.");
+      return;
+    }
+    if (form.address.pincode.trim().length < 4) {
+      setError("Pincode must be at least 4 characters.");
+      return;
+    }
     if (!form.consent) {
       setError("You must agree to share your information.");
       return;
@@ -60,6 +79,12 @@ export default function CompleteProfilePage() {
       const updateData: Record<string, unknown> = {
         displayName: form.displayName.trim(),
         phone: form.phone.trim(),
+        address: {
+          city: form.address.city.trim(),
+          state: form.address.state.trim(),
+          country: form.address.country.trim(),
+          pincode: form.address.pincode.trim(),
+        },
         consentGiven: true,
         consentGivenAt: serverTimestamp(),
         profileComplete: true,
@@ -80,7 +105,13 @@ export default function CompleteProfilePage() {
       await updateDoc(doc(db, "users", firebaseUser.uid), updateData);
 
       await refreshUser();
-      router.push("/dashboard");
+      // Domain users already have an institutionId — go to dashboard.
+      // External users need to select/join an institution first.
+      if (userData?.institutionId) {
+        router.push("/dashboard");
+      } else {
+        router.push("/select-institution");
+      }
     } catch (err) {
       console.error("Profile update failed:", err);
       setError("Failed to save profile. Please try again.");
@@ -162,6 +193,90 @@ export default function CompleteProfilePage() {
               />
             </div>
           </div>
+
+          {/* Address Section */}
+          <fieldset className="space-y-3">
+            <legend className="text-sm font-medium">Address *</legend>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium" htmlFor="country">
+                  Country *
+                </label>
+                <input
+                  id="country"
+                  type="text"
+                  required
+                  value={form.address.country}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      address: { ...f.address, country: e.target.value },
+                    }))
+                  }
+                  className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                  placeholder="Country"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium" htmlFor="state">
+                  State *
+                </label>
+                <input
+                  id="state"
+                  type="text"
+                  required
+                  value={form.address.state}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      address: { ...f.address, state: e.target.value },
+                    }))
+                  }
+                  className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                  placeholder="State"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium" htmlFor="city">
+                  City *
+                </label>
+                <input
+                  id="city"
+                  type="text"
+                  required
+                  value={form.address.city}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      address: { ...f.address, city: e.target.value },
+                    }))
+                  }
+                  className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                  placeholder="City"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium" htmlFor="pincode">
+                  Pincode *
+                </label>
+                <input
+                  id="pincode"
+                  type="text"
+                  required
+                  minLength={4}
+                  value={form.address.pincode}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      address: { ...f.address, pincode: e.target.value },
+                    }))
+                  }
+                  className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
+                  placeholder="Pincode"
+                />
+              </div>
+            </div>
+          </fieldset>
 
           {/* Parent/Guardian Section */}
           <div className="border-t border-[var(--border)] pt-4">

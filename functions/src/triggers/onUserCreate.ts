@@ -13,10 +13,15 @@ const db = getFirestore();
 /**
  * Triggered when a new user signs in via Firebase Auth.
  *
- * 1. Matches the user's email domain to an institution
- * 2. Determines if the user is external (Gmail) or internal (Workspace)
- * 3. Sets custom claims: { role, institutionId }
- * 4. Creates a user document in Firestore
+ * For domain users (email matches an institution's allowedEmailDomains):
+ *   - Creates an approved membership in that institution
+ *   - Sets custom claims with that institutionId
+ *   - profileComplete = true
+ *
+ * For external users (Gmail, etc.):
+ *   - Creates user doc with no institution assignment
+ *   - User must complete profile + select institution(s) manually
+ *   - profileComplete = false
  */
 export const onUserCreate = functions.region("asia-south1").auth.user().onCreate(async (user) => {
   if (!user.email) {
@@ -25,12 +30,12 @@ export const onUserCreate = functions.region("asia-south1").auth.user().onCreate
   }
 
   const emailDomain = user.email.split("@")[1];
+  const role = "student";
 
   // Find institution by email domain
   const institutionsSnap = await db.collection("institutions").get();
 
   let matchedInstitutionId: string | null = null;
-  let isExternal = true;
 
   for (const doc of institutionsSnap.docs) {
     const inst = doc.data();
@@ -39,31 +44,17 @@ export const onUserCreate = functions.region("asia-south1").auth.user().onCreate
     // Check if user's domain matches the institution's allowed domains
     if (inst.allowedEmailDomains?.includes(emailDomain)) {
       matchedInstitutionId = doc.id;
-      isExternal = false;
       break;
     }
-
-    // If institution allows external users and no match yet,
-    // use the default institution (first active one)
-    if (inst.settings?.allowExternalUsers && !matchedInstitutionId) {
-      matchedInstitutionId = doc.id;
-      isExternal = true;
-    }
   }
 
-  if (!matchedInstitutionId) {
-    console.warn(
-      `No matching institution for email ${user.email}. User ${user.uid} will not have claims set.`
-    );
-    return;
-  }
-
-  const role = "student"; // Default role for all new users
+  const isExternal = !matchedInstitutionId;
 
   // Set custom claims
   await adminAuth.setCustomUserClaims(user.uid, {
     role,
-    institutionId: matchedInstitutionId,
+    institutionId: matchedInstitutionId || "",
+    activeInstitutionId: matchedInstitutionId || "",
   });
 
   // Create user document in Firestore
@@ -76,13 +67,15 @@ export const onUserCreate = functions.region("asia-south1").auth.user().onCreate
       displayName: user.displayName || "",
       photoUrl: user.photoURL || null,
       phone: user.phoneNumber || null,
-      institutionId: matchedInstitutionId,
+      institutionId: matchedInstitutionId || "",
+      activeInstitutionId: matchedInstitutionId || null,
       role,
       isExternal,
       consentGiven: false,
       consentGivenAt: null,
       profileComplete: !isExternal, // Internal users have profile complete by default
       googleWorkspaceUserId: null,
+      address: null,
       profile: {
         bio: null,
         dateOfBirth: null,
@@ -100,7 +93,36 @@ export const onUserCreate = functions.region("asia-south1").auth.user().onCreate
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-  console.log(
-    `User ${user.uid} (${user.email}) assigned to institution ${matchedInstitutionId} as ${role} (external: ${isExternal})`
-  );
+  // For domain users: create an approved membership in the matched institution
+  if (matchedInstitutionId) {
+    await db
+      .collection("users")
+      .doc(user.uid)
+      .collection("memberships")
+      .doc(matchedInstitutionId)
+      .set({
+        id: matchedInstitutionId,
+        userId: user.uid,
+        institutionId: matchedInstitutionId,
+        role,
+        status: "approved",
+        isExternal: false,
+        joinMethod: "email_domain",
+        requestedAt: FieldValue.serverTimestamp(),
+        reviewedAt: FieldValue.serverTimestamp(),
+        reviewedBy: null, // auto-approved
+        reviewNote: null,
+        transferredTo: null,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+
+    console.log(
+      `User ${user.uid} (${user.email}) auto-assigned to institution ${matchedInstitutionId} via email domain`
+    );
+  } else {
+    console.log(
+      `User ${user.uid} (${user.email}) is external — needs to select institution(s)`
+    );
+  }
 });

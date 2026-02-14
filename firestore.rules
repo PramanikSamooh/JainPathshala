@@ -76,6 +76,27 @@ service cloud.firestore {
       );
       allow create: if false;  // Only Cloud Functions create user docs
       allow delete: if false;
+
+      // ═══════════════════════════════════════════
+      // Memberships subcollection
+      // ═══════════════════════════════════════════
+      match /memberships/{institutionId} {
+        // Users can read their own memberships; admins can read all
+        allow read: if request.auth != null && (
+          request.auth.uid == userId ||
+          isSuperAdmin() ||
+          isAdminOrAbove()
+        );
+        // Users can create pending membership requests for themselves
+        allow create: if isAuthenticated() && isOwner(userId)
+          && request.resource.data.status == 'pending';
+        // Only admins can update memberships (approve/reject/transfer)
+        allow update: if isAuthenticated() && (
+          isSuperAdmin() ||
+          isAdminOrAbove()
+        );
+        allow delete: if false;
+      }
     }
 
     // ═══════════════════════════════════════════

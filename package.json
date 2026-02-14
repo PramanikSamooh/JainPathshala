@@ -8,7 +8,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "playwright test --config tests/playwright.config.ts",
+    "test:student": "playwright test --config tests/playwright.config.ts --project=student",
+    "test:instructor": "playwright test --config tests/playwright.config.ts --project=instructor",
+    "test:admin": "playwright test --config tests/playwright.config.ts --project=admin",
+    "test:super-admin": "playwright test --config tests/playwright.config.ts --project=super-admin",
+    "test:ai": "npx tsx tests/agents/orchestrator.ts",
+    "test:report": "playwright show-report tests/reports"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.0",
@@ -29,6 +36,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.1.18",
     "@types/node": "^25.2.2",
     "@types/react": "^19.2.13",

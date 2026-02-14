@@ -23,9 +23,17 @@ A secure, scalable Learning Management System built on **Google Workspace** and 
 
 ### Multi-Institution Support
 - Fully **multi-tenant** — every document scoped by `institutionId`
+- **Multi-institution membership** — students can join multiple institutions simultaneously
+- Membership subcollection at `users/{uid}/memberships/{institutionId}` tracks admission status
+- **Admission workflow**: browse institutions or join via invite code → admin approval → approved member
+- Admin **Admissions panel** with approve, reject, and transfer actions (with notes)
 - Per-institution **white-label branding** (logo, colors, tagline, footer)
 - Institution-level settings: self-registration, external user access, maintenance mode, locale
 - Admin panel to manage institution configuration without any code changes
+- **Institution discovery page** with country/state filters for new users
+- Auto-generated **invite codes** per institution for direct joining
+- **Course-type enrollment rules**: self-paced/bootcamp open to all, instructor-led requires approved membership
+- **Structured address** collection (city, state, country, pincode) during profile completion
 
 ### Course Management
 - Create courses with rich metadata: title, description, thumbnail, skill level, pricing, tags
@@ -100,8 +108,9 @@ A secure, scalable Learning Management System built on **Google Workspace** and 
 - **Firebase Authentication** with Google Sign-In
 - Role-based access control: `super_admin`, `institution_admin`, `instructor`, `student`
 - Custom claims synced to Firestore user documents
-- Session cookie-based auth for API routes
-- External user support (Gmail) with mandatory profile completion
+- Session cookie-based auth for API routes (revocation check only on write operations)
+- External user support (Gmail) with mandatory profile completion and address collection
+- Institution selection flow for external users (browse + invite code)
 - Parent/guardian information collection for minor students
 
 ### Admin Dashboard
@@ -215,8 +224,12 @@ A secure, scalable Learning Management System built on **Google Workspace** and 
 ### Key Design Decisions
 
 - **Multi-tenancy via `institutionId`** — Every Firestore document includes `institutionId`, enforced at the security rules level. No data leakage between institutions.
+- **Multi-institution memberships** — Students can belong to multiple institutions via `users/{uid}/memberships/{institutionId}` subcollection. Admission requests require admin approval.
+- **Course-type enrollment gating** — Self-paced and bootcamp courses are open to all authenticated users. Instructor-led courses require an approved membership in the course's institution.
 - **Firebase Client SDK lazy initialization** — Prevents build failures in Next.js (no env vars at build time).
-- **Server-side session cookies** — API routes verify Firebase session cookies, not ID tokens, for better security.
+- **Server-side session cookies** — API routes verify Firebase session cookies, not ID tokens, for better security. Revocation check disabled for read-only endpoints for performance.
+- **API response caching** — GET endpoints return `Cache-Control` headers with `stale-while-revalidate` to reduce redundant Firestore reads.
+- **Institution data caching** — `sessionStorage` with 30-minute TTL eliminates repeated fetches on navigation.
 - **Google Workspace service account with domain-wide delegation** — Backend operations (calendar events, Drive files, Classroom sync) run as a service account impersonating an admin user.
 
 ---
@@ -253,14 +266,15 @@ GoogleWorkspaceEdu/
 │   │   ├── course.ts          # Course, Module, Lesson, VideoConfig
 │   │   ├── enrollment.ts      # Enrollment, LessonProgress
 │   │   ├── institution.ts     # Institution, Branding, Settings
-│   │   ├── user.ts            # UserProfile, roles
+│   │   ├── user.ts            # UserProfile, UserAddress, roles
+│   │   ├── membership.ts     # InstitutionMembership, JoinMethod
 │   │   ├── video-progress.ts  # VideoProgress, WatchedSegment
 │   │   ├── payment.ts         # Payment records
 │   │   ├── certificate.ts     # Certificate type
 │   │   ├── exam.ts            # Exam, ExamAttempt
 │   │   └── zoom.ts            # Zoom meeting, registrant, participant types
-│   ├── enums/                 # Shared enumerations
-│   └── validators/            # Zod validation schemas (incl. zoom.validator.ts)
+│   ├── enums/                 # Shared enumerations (incl. MembershipStatus)
+│   └── validators/            # Zod validation schemas (incl. membership, zoom)
 ├── src/
 │   ├── app/
 │   │   ├── layout.tsx              # Root layout (PWA meta)
@@ -275,6 +289,8 @@ GoogleWorkspaceEdu/
 │   │   │   ├── dashboard/          # Student dashboard
 │   │   │   ├── courses/            # Course catalog + learn page
 │   │   │   ├── certificates/       # Certificate gallery
+│   │   │   ├── complete-profile/   # Profile completion (address + consent)
+│   │   │   ├── select-institution/ # Institution browser for new users
 │   │   │   ├── profile/            # Profile editing
 │   │   │   ├── instructor/         # Instructor panel
 │   │   │   └── admin/              # Admin panel
@@ -282,6 +298,7 @@ GoogleWorkspaceEdu/
 │   │   │       ├── users/          # User management
 │   │   │       ├── enrollments/    # Enrollment management
 │   │   │       ├── institutions/   # Institution config
+│   │   │       ├── admissions/     # Admission request management
 │   │   │       ├── analytics/      # Charts & KPIs
 │   │   │       ├── zoom/           # Zoom dashboard, meeting details, reports
 │   │   │       └── reset-data/     # Data management
@@ -295,7 +312,8 @@ GoogleWorkspaceEdu/
 │   │       ├── video-progress/     # Video tracking
 │   │       ├── notifications/      # Push + WhatsApp send
 │   │       ├── users/              # User management
-│   │       ├── institutions/       # Institution CRUD
+│   │       ├── institutions/       # Institution CRUD + discovery
+│   │       ├── memberships/        # Admission requests + review
 │   │       ├── cron/               # Scheduled tasks
 │   │       ├── webhooks/           # Razorpay + WhatsApp + Zoom
 │   │       └── zoom/              # Zoom meetings CRUD, registrants, reports
@@ -330,11 +348,16 @@ GoogleWorkspaceEdu/
 │   └── src/                        # Firebase Cloud Functions
 │       ├── index.ts                # Function exports
 │       ├── triggers/
+│       │   ├── onUserCreate.ts        # Multi-institution user provisioning
 │       │   └── onEnrollmentCreate.ts  # Auto-register in Zoom + Classroom
 │       └── lib/
 │           ├── google-clients.ts   # Google API (server-side)
 │           └── zoom-client.ts      # Zoom API for Cloud Functions
-├── firestore.rules                 # Security rules
+├── scripts/
+│   ├── seed.ts                     # Seed data for production
+│   ├── seed-emulator.ts            # Seed data for emulator
+│   └── migrate-to-multi-institution.ts  # Migration script (dry-run supported)
+├── firestore.rules                 # Security rules (incl. memberships)
 ├── package.json
 └── tsconfig.json
 ```
@@ -498,6 +521,16 @@ firebase deploy --only firestore:rules
 ## Roadmap
 
 - [x] Zoom integration (S2S OAuth, meetings, registrants, webhooks, reports, admin dashboard)
+- [x] Performance optimization (session cache, API cache headers, auth retry reduction)
+- [x] Multi-institution membership model with admission workflow
+- [x] Institution discovery page with country/state filters + invite codes
+- [x] Admin admissions panel (approve/reject/transfer with notes)
+- [x] Course-type enrollment rules (self_paced/bootcamp open, instructor_led gated)
+- [x] Structured address collection (city, state, country, pincode)
+- [x] Migration script for existing single-institution users
+- [ ] Geo-based institution discovery with geocoding API
+- [ ] Merged multi-institution dashboard with timezone display
+- [ ] Institution switcher in sidebar
 - [ ] Google Cloud Storage video streaming with signed URLs
 - [ ] Instructor dashboard for video analytics
 - [ ] Server-side checkpoint answer validation

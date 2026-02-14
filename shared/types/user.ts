@@ -1,6 +1,13 @@
 import type { Timestamp } from "firebase/firestore";
 import type { UserRole } from "../enums/roles";
 
+export interface UserAddress {
+  city: string;
+  state: string;
+  country: string;
+  pincode: string;
+}
+
 export interface UserProfile {
   bio: string | null;
   dateOfBirth: string | null;
@@ -29,13 +36,17 @@ export interface User {
   displayName: string;
   photoUrl: string | null;
   phone: string | null;
+  /** Primary/active institution — kept for backward compat with existing queries */
   institutionId: string;
+  /** Currently active institution (same as institutionId, explicit field for multi-inst) */
+  activeInstitutionId: string | null;
   role: UserRole;
   isExternal: boolean;
   consentGiven: boolean;
   consentGivenAt: Timestamp | null;
   profileComplete: boolean;
   googleWorkspaceUserId: string | null;
+  address: UserAddress | null;
   profile: UserProfile;
   parentGuardian: ParentGuardian | null;
   preferences: UserPreferences;
@@ -49,4 +60,5 @@ export interface User {
 export interface CustomClaims {
   role: UserRole;
   institutionId: string;
+  activeInstitutionId?: string;
 }

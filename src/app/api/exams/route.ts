@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const decoded = await getAdminAuth().verifySessionCookie(sessionCookie, true);
+    const decoded = await getAdminAuth().verifySessionCookie(sessionCookie, false);
     const db = getAdminDb();
     const { searchParams } = request.nextUrl;
 

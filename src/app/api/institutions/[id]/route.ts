@@ -18,7 +18,7 @@ export async function GET(
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const decoded = await getAdminAuth().verifySessionCookie(sessionCookie, true);
+    const decoded = await getAdminAuth().verifySessionCookie(sessionCookie, false);
 
     if (decoded.role !== "super_admin" && decoded.institutionId !== id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -31,7 +31,9 @@ export async function GET(
       return NextResponse.json({ error: "Institution not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ id: doc.id, ...doc.data() });
+    const response = NextResponse.json({ id: doc.id, ...doc.data() });
+    response.headers.set("Cache-Control", "private, max-age=300, stale-while-revalidate=600");
+    return response;
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

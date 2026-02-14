@@ -141,7 +141,7 @@ export default function NewInstitutionPage() {
                 required
                 value={form.primaryDomain}
                 onChange={(e) => updateField("primaryDomain", e.target.value)}
-                placeholder="learn.ifs.edu.in"
+                placeholder="learn.ifsjaipur.com"
                 className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
               />
             </div>
@@ -154,7 +154,7 @@ export default function NewInstitutionPage() {
                 required
                 value={form.domains}
                 onChange={(e) => updateField("domains", e.target.value)}
-                placeholder="learn.ifs.edu.in, ifs.edu.in"
+                placeholder="learn.ifsjaipur.com, ifsjaipur.com"
                 className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
               />
             </div>
@@ -168,7 +168,7 @@ export default function NewInstitutionPage() {
                 required
                 value={form.allowedEmailDomains}
                 onChange={(e) => updateField("allowedEmailDomains", e.target.value)}
-                placeholder="ifs.edu.in, gmail.com"
+                placeholder="ifsjaipur.com, gmail.com"
                 className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
               />
             </div>

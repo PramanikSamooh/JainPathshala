@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const decoded = await getAdminAuth().verifySessionCookie(sessionCookie, true);
+    const decoded = await getAdminAuth().verifySessionCookie(sessionCookie, false);
     const db = getAdminDb();
 
     // Treat missing role as student (claims may not have propagated yet for new users)
@@ -38,7 +38,9 @@ export async function GET(request: NextRequest) {
     const snap = await query.orderBy("createdAt", "desc").limit(100).get();
     const certificates = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 
-    return NextResponse.json({ certificates });
+    const response = NextResponse.json({ certificates });
+    response.headers.set("Cache-Control", "private, max-age=60, stale-while-revalidate=300");
+    return response;
   } catch (err) {
     console.error("GET certificates error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

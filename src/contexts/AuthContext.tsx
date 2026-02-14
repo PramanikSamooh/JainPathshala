@@ -8,19 +8,23 @@ import {
   type ReactNode,
 } from "react";
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs } from "firebase/firestore";
 import { getClientAuth, getClientDb } from "@/lib/firebase/client";
 import type { User } from "@shared/types/user";
+import type { InstitutionMembership } from "@shared/types/membership";
 
 interface AuthState {
   firebaseUser: FirebaseUser | null;
   userData: User | null;
+  memberships: InstitutionMembership[];
   loading: boolean;
   error: string | null;
 }
 
 interface AuthContextValue extends AuthState {
   refreshUser: () => Promise<void>;
+  needsInstitutionSelection: boolean;
+  approvedInstitutionIds: string[];
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -29,43 +33,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     firebaseUser: null,
     userData: null,
+    memberships: [],
     loading: true,
     error: null,
   });
 
-  async function fetchUserData(firebaseUser: FirebaseUser, retries = 3) {
+  async function fetchUserData(firebaseUser: FirebaseUser, attempt = 0) {
+    const maxAttempts = 2;
+    const delay = attempt === 0 ? 500 : 1000; // exponential backoff
     try {
-      const userDoc = await getDoc(doc(getClientDb(), "users", firebaseUser.uid));
+      const db = getClientDb();
+      const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
       if (userDoc.exists()) {
+        // Fetch memberships subcollection
+        const membershipsSnap = await getDocs(
+          collection(db, "users", firebaseUser.uid, "memberships")
+        );
+        const memberships = membershipsSnap.docs.map(
+          (d) => d.data() as InstitutionMembership
+        );
+
         setState({
           firebaseUser,
           userData: userDoc.data() as User,
+          memberships,
           loading: false,
           error: null,
         });
-      } else if (retries > 0) {
+      } else if (attempt < maxAttempts) {
         // User document not yet created (Cloud Function may be processing)
-        // Retry after a delay
-        setTimeout(() => fetchUserData(firebaseUser, retries - 1), 2000);
+        setTimeout(() => fetchUserData(firebaseUser, attempt + 1), delay);
       } else {
         setState({
           firebaseUser,
           userData: null,
+          memberships: [],
           loading: false,
           error: null,
         });
       }
-    } catch (err) {
+    } catch {
       // Firestore permission error — likely new user whose claims haven't propagated yet
-      // The Cloud Function sets claims async, so retry after a delay
-      if (retries > 0) {
-        // User doc not ready yet — Cloud Function sets claims async, retry after delay
-        setTimeout(() => fetchUserData(firebaseUser, retries - 1), 2000);
+      if (attempt < maxAttempts) {
+        setTimeout(() => fetchUserData(firebaseUser, attempt + 1), delay);
       } else {
-        console.error("Error fetching user data:", err);
         setState({
           firebaseUser,
           userData: null,
+          memberships: [],
           loading: false,
           error: null,
         });
@@ -81,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setState({
           firebaseUser: null,
           userData: null,
+          memberships: [],
           loading: false,
           error: null,
         });
@@ -96,8 +112,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const needsInstitutionSelection =
+    !!state.userData?.isExternal &&
+    !state.memberships.some((m) => m.status === "approved");
+
+  const approvedInstitutionIds = state.memberships
+    .filter((m) => m.status === "approved")
+    .map((m) => m.institutionId);
+
   return (
-    <AuthContext.Provider value={{ ...state, refreshUser }}>
+    <AuthContext.Provider
+      value={{
+        ...state,
+        refreshUser,
+        needsInstitutionSelection,
+        approvedInstitutionIds,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

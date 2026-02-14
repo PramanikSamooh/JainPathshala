@@ -17,7 +17,7 @@ export async function GET(
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const decoded = await getAdminAuth().verifySessionCookie(sessionCookie, true);
+    const decoded = await getAdminAuth().verifySessionCookie(sessionCookie, false);
     const db = getAdminDb();
 
     // Treat missing role as student (claims may not have propagated yet for new users)

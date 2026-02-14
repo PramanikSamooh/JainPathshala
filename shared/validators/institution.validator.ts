@@ -21,6 +21,15 @@ export const institutionContactInfoSchema = z.object({
   website: z.url(),
 });
 
+export const institutionLocationSchema = z.object({
+  country: z.string().min(2).max(100),
+  state: z.string().min(2).max(100),
+  city: z.string().min(2).max(100),
+  lat: z.number().min(-90).max(90).nullable().optional(),
+  lng: z.number().min(-180).max(180).nullable().optional(),
+  timezone: z.string().max(50).default("Asia/Kolkata"),
+});
+
 export const createInstitutionSchema = z.object({
   name: z.string().min(2).max(100),
   slug: z
@@ -31,6 +40,7 @@ export const createInstitutionSchema = z.object({
   domains: z.array(z.string().min(3)).min(1),
   primaryDomain: z.string().min(3),
   allowedEmailDomains: z.array(z.string().min(3)),
+  location: institutionLocationSchema,
   branding: institutionBrandingSchema,
   contactInfo: institutionContactInfoSchema,
   settings: z.object({
@@ -68,6 +78,14 @@ export const updateInstitutionSchema = z.object({
     phone: z.union([z.string().min(10).max(15), z.literal("")]).optional(),
     address: z.string().max(500).optional(),
     website: optionalUrl.optional(),
+  }).optional(),
+  location: z.object({
+    country: z.string().min(2).max(100).optional(),
+    state: z.string().min(2).max(100).optional(),
+    city: z.string().min(2).max(100).optional(),
+    lat: z.number().min(-90).max(90).nullable().optional(),
+    lng: z.number().min(-180).max(180).nullable().optional(),
+    timezone: z.string().max(50).optional(),
   }).optional(),
   settings: z.object({
     defaultCourseAccessDays: z.number().int().min(1).max(365).optional(),

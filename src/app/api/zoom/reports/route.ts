@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const decoded = await getAdminAuth().verifySessionCookie(sessionCookie, true);
+    const decoded = await getAdminAuth().verifySessionCookie(sessionCookie, false);
     const allowedRoles = ["super_admin", "institution_admin"];
     if (!allowedRoles.includes(decoded.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });

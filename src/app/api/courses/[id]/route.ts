@@ -18,7 +18,7 @@ export async function GET(
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const decoded = await getAdminAuth().verifySessionCookie(sessionCookie, true);
+    const decoded = await getAdminAuth().verifySessionCookie(sessionCookie, false);
     const db = getAdminDb();
 
     // Treat missing role as student (claims may not have propagated yet for new users)
@@ -77,11 +77,13 @@ export async function GET(
       })
     );
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       id: courseDoc.id,
       ...course,
       modules,
     });
+    response.headers.set("Cache-Control", "private, max-age=60, stale-while-revalidate=300");
+    return response;
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
