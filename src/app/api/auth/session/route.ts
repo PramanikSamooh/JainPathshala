@@ -101,6 +101,37 @@ async function ensureUserDoc(uid: string, email: string, displayName: string, ph
   } else {
     // Update lastLoginAt on existing doc
     await userRef.update({ lastLoginAt: FieldValue.serverTimestamp() });
+
+    // Backfill missing membership doc for users who have institutionId but no membership
+    const existingData = userDoc.data()!;
+    const userInstitutionId = existingData.institutionId;
+    if (userInstitutionId) {
+      const membershipRef = db
+        .collection("users")
+        .doc(uid)
+        .collection("memberships")
+        .doc(userInstitutionId);
+      const membershipDoc = await membershipRef.get();
+      if (!membershipDoc.exists) {
+        await membershipRef.set({
+          id: userInstitutionId,
+          userId: uid,
+          institutionId: userInstitutionId,
+          role: existingData.role || "student",
+          status: "approved",
+          isExternal: existingData.isExternal ?? false,
+          joinMethod: "email_domain",
+          requestedAt: FieldValue.serverTimestamp(),
+          reviewedAt: FieldValue.serverTimestamp(),
+          reviewedBy: null,
+          reviewNote: "Auto-backfilled",
+          transferredTo: null,
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+        console.log(`Backfilled missing membership for ${email} in ${userInstitutionId}`);
+      }
+    }
   }
 }
 

@@ -56,6 +56,7 @@ export default function AdminLayout({
   const adminNav = [
     { href: "/admin/courses", label: "Courses" },
     { href: "/admin/enrollments", label: "Enrollments" },
+    { href: "/admin/admissions", label: "Admissions" },
     { href: "/admin/payments", label: "Payments" },
     { href: "/admin/users", label: "Mentors" },
     { href: "/admin/meetings", label: "Meetings" },

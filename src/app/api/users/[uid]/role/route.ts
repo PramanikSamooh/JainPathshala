@@ -49,6 +49,29 @@ export async function PUT(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    // Domain validation: instructor and institution_admin must have org email
+    if (role === UserRole.INSTRUCTOR || role === UserRole.INSTITUTION_ADMIN) {
+      if (!user.institutionId) {
+        return NextResponse.json(
+          { error: "User must belong to an institution before being promoted" },
+          { status: 400 }
+        );
+      }
+      const emailDomain = (user.email || "").split("@")[1];
+      const instDoc = await db.collection("institutions").doc(user.institutionId).get();
+      const allowedDomains: string[] = instDoc.exists
+        ? instDoc.data()!.allowedEmailDomains || []
+        : [];
+      if (!allowedDomains.includes(emailDomain)) {
+        return NextResponse.json(
+          {
+            error: `Only users with an organization email (${allowedDomains.join(", ")}) can be assigned this role`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     // Update custom claims
     const auth = getAdminAuth();
     await auth.setCustomUserClaims(uid, {

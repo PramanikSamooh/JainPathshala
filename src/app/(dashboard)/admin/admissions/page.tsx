@@ -122,6 +122,10 @@ export default function AdminAdmissionsPage() {
   const [institutions, setInstitutions] = useState<InstitutionOption[]>([]);
   const [institutionsLoaded, setInstitutionsLoaded] = useState(false);
 
+  // Sync members state
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+
   /* ---------- Auth guard ---------- */
 
   useEffect(() => {
@@ -187,10 +191,15 @@ export default function AdminAdmissionsPage() {
   async function handleApprove(userId: string) {
     setActionLoading(userId);
     try {
+      const admission = admissions.find((a) => a.userId === userId);
       const res = await fetch(`/api/memberships/${userId}/review`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, action: "approve" }),
+        body: JSON.stringify({
+          userId,
+          action: "approve",
+          institutionId: admission?.institutionId,
+        }),
       });
       if (res.ok) {
         setAdmissions((prev) =>
@@ -211,10 +220,16 @@ export default function AdminAdmissionsPage() {
     setActionLoading(userId);
     setRejectModal({ open: false, userId: "", note: "" });
     try {
+      const admission = admissions.find((a) => a.userId === userId);
       const res = await fetch(`/api/memberships/${userId}/review`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, action: "reject", note }),
+        body: JSON.stringify({
+          userId,
+          action: "reject",
+          note,
+          institutionId: admission?.institutionId,
+        }),
       });
       if (res.ok) {
         setAdmissions((prev) =>
@@ -233,18 +248,20 @@ export default function AdminAdmissionsPage() {
   }
 
   async function handleTransfer() {
-    const { userId, note, institutionId } = transferModal;
-    if (!institutionId) return;
+    const { userId, note, institutionId: targetInstitutionId } = transferModal;
+    if (!targetInstitutionId) return;
     setActionLoading(userId);
     setTransferModal({ open: false, userId: "", note: "", institutionId: "" });
     try {
+      const admission = admissions.find((a) => a.userId === userId);
       const res = await fetch(`/api/memberships/${userId}/review`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId,
           action: "transfer",
-          transferToInstitutionId: institutionId,
+          transferToInstitutionId: targetInstitutionId,
+          institutionId: admission?.institutionId,
           note,
         }),
       });
@@ -255,7 +272,7 @@ export default function AdminAdmissionsPage() {
               ? {
                   ...a,
                   status: "transferred",
-                  transferredTo: institutionId,
+                  transferredTo: targetInstitutionId,
                   reviewNote: note,
                 }
               : a
@@ -266,6 +283,36 @@ export default function AdminAdmissionsPage() {
       console.error("Failed to transfer:", err);
     } finally {
       setActionLoading(null);
+    }
+  }
+
+  /* ---------- Sync missing memberships ---------- */
+
+  async function handleSyncMembers() {
+    setSyncing(true);
+    setSyncMessage(null);
+    try {
+      const res = await fetch("/api/admin/backfill-memberships", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.backfilled > 0) {
+          setSyncMessage(`${data.backfilled} missing membership(s) synced`);
+          fetchAdmissions();
+        } else {
+          setSyncMessage("All members are already synced");
+        }
+      } else {
+        const data = await res.json();
+        setSyncMessage(`Error: ${data.error}`);
+      }
+    } catch {
+      setSyncMessage("Failed to sync members");
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -322,10 +369,33 @@ export default function AdminAdmissionsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold">Admissions</h1>
-      <p className="mt-1 text-sm text-[var(--muted-foreground)]">
-        Review and manage institution membership requests
-      </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Admissions</h1>
+          <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+            Review and manage institution membership requests
+          </p>
+        </div>
+        <button
+          onClick={handleSyncMembers}
+          disabled={syncing}
+          className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm font-medium text-[var(--muted-foreground)] transition-colors hover:bg-[var(--muted)] disabled:opacity-50"
+        >
+          {syncing ? "Syncing..." : "Sync Members"}
+        </button>
+      </div>
+
+      {syncMessage && (
+        <div
+          className={`mt-3 rounded-lg p-3 text-sm ${
+            syncMessage.startsWith("Error")
+              ? "bg-red-50 text-red-600"
+              : "bg-green-50 text-green-600"
+          }`}
+        >
+          {syncMessage}
+        </div>
+      )}
 
       {/* Stats Bar */}
       <div className="mt-4 grid gap-4 sm:grid-cols-3">

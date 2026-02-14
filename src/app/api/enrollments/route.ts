@@ -33,8 +33,9 @@ export async function GET(request: NextRequest) {
       .collection("enrollments")
       .where("institutionId", "==", institutionId);
 
-    // Students only see their own enrollments
-    if (role === "student") {
+    // Students only see their own enrollments; ?mine=true forces own-only for any role
+    const mineOnly = searchParams.get("mine") === "true";
+    if (role === "student" || mineOnly) {
       query = query.where("userId", "==", decoded.uid);
     } else {
       const userIdFilter = searchParams.get("userId");

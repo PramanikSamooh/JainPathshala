@@ -29,6 +29,7 @@ export default function AdminMentorsPage() {
   const [loading, setLoading] = useState(true);
   const [updatingUid, setUpdatingUid] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
   useEffect(() => {
     async function fetchUsers() {
@@ -52,6 +53,7 @@ export default function AdminMentorsPage() {
 
   async function handleRoleChange(uid: string, newRole: string) {
     setUpdatingUid(uid);
+    setMessage(null);
 
     try {
       const res = await fetch(`/api/users/${uid}/role`, {
@@ -62,16 +64,20 @@ export default function AdminMentorsPage() {
 
       if (res.ok) {
         if (newRole === "student") {
-          // Remove from mentors list since they're no longer a mentor
           setUsers((prev) => prev.filter((u) => u.uid !== uid));
         } else {
           setUsers((prev) =>
             prev.map((u) => (u.uid === uid ? { ...u, role: newRole } : u))
           );
         }
+        setMessage({ text: "Role updated successfully", type: "success" });
+      } else {
+        const data = await res.json();
+        setMessage({ text: data.error || "Failed to update role", type: "error" });
       }
     } catch (err) {
       console.error("Failed to update role:", err);
+      setMessage({ text: "Failed to update role", type: "error" });
     } finally {
       setUpdatingUid(null);
     }
@@ -106,6 +112,18 @@ export default function AdminMentorsPage() {
       <p className="mt-1 text-sm text-[var(--muted-foreground)]">
         Manage administrators and instructors
       </p>
+
+      {message && (
+        <div
+          className={`mt-4 rounded-lg p-3 text-sm ${
+            message.type === "error"
+              ? "bg-red-50 text-red-600"
+              : "bg-green-50 text-green-600"
+          }`}
+        >
+          {message.text}
+        </div>
+      )}
 
       {/* Stats */}
       <div className="mt-4 grid gap-4 sm:grid-cols-3">

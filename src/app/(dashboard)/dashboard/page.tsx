@@ -45,7 +45,7 @@ export default function DashboardPage() {
     async function fetchDashboardData() {
       try {
         const [enrollRes, certRes] = await Promise.all([
-          fetch("/api/enrollments?include=course"),
+          fetch("/api/enrollments?include=course&mine=true"),
           fetch("/api/certificates"),
         ]);
         if (enrollRes.ok) {
