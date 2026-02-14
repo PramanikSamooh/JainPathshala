@@ -81,7 +81,6 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
       : []),
     ...(isAdmin ? [{ href: "/admin/courses", label: "Admin Panel" }] : []),
     ...(isAdmin ? [{ href: "/admin/admissions", label: "Admissions" }] : []),
-    ...(isAdmin ? [{ href: "/admin/zoom", label: "Zoom Meetings" }] : []),
   ];
 
   async function handleSignOut() {

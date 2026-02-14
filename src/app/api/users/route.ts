@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase/admin";
 
+const VALID_ROLES = ["super_admin", "institution_admin", "instructor", "student"];
+
 /**
  * GET /api/users
- * List users in the institution. Admin only.
+ * List users in the institution.
+ * Query params:
+ *   ?role=instructor          — single role filter
+ *   ?roles=super_admin,instructor — comma-separated multi-role filter
+ *   ?institutionId=xxx        — super_admin only
+ *
+ * Permissions:
+ *   - super_admin / institution_admin: full access
+ *   - instructor: can only query ?role=instructor (to see other instructors)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -13,15 +23,23 @@ export async function GET(request: NextRequest) {
     }
 
     const decoded = await getAdminAuth().verifySessionCookie(sessionCookie, false);
-    const allowedRoles = ["super_admin", "institution_admin"];
-    if (!allowedRoles.includes(decoded.role)) {
+    const { searchParams } = request.nextUrl;
+    const roleParam = searchParams.get("role");
+    const rolesParam = searchParams.get("roles");
+
+    // Instructors can only fetch the instructor list
+    if (decoded.role === "instructor") {
+      if (roleParam !== "instructor") {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    } else if (!["super_admin", "institution_admin"].includes(decoded.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const db = getAdminDb();
     let institutionId =
       decoded.role === "super_admin"
-        ? request.nextUrl.searchParams.get("institutionId") || decoded.institutionId
+        ? searchParams.get("institutionId") || decoded.institutionId
         : decoded.institutionId;
 
     if (!institutionId) {
@@ -32,11 +50,21 @@ export async function GET(request: NextRequest) {
       institutionId = process.env.NEXT_PUBLIC_DEFAULT_INSTITUTION_ID || "ifs";
     }
 
-    const snap = await db
+    let query: FirebaseFirestore.Query = db
       .collection("users")
-      .where("institutionId", "==", institutionId)
-      .limit(200)
-      .get();
+      .where("institutionId", "==", institutionId);
+
+    // Apply role filters
+    if (rolesParam) {
+      const rolesList = rolesParam.split(",").filter((r) => VALID_ROLES.includes(r));
+      if (rolesList.length > 0) {
+        query = query.where("role", "in", rolesList);
+      }
+    } else if (roleParam && VALID_ROLES.includes(roleParam)) {
+      query = query.where("role", "==", roleParam);
+    }
+
+    const snap = await query.limit(200).get();
 
     const users = snap.docs.map((doc) => ({
       id: doc.id,

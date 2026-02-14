@@ -57,7 +57,8 @@ export default function AdminLayout({
     { href: "/admin/courses", label: "Courses" },
     { href: "/admin/enrollments", label: "Enrollments" },
     { href: "/admin/payments", label: "Payments" },
-    { href: "/admin/users", label: "Users" },
+    { href: "/admin/users", label: "Mentors" },
+    { href: "/admin/meetings", label: "Meetings" },
     { href: "/admin/analytics", label: "Analytics" },
     ...(isSuperAdmin
       ? [

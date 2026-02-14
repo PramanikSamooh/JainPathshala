@@ -129,6 +129,14 @@ export async function PUT(
     }
 
     const body = await request.json();
+
+    // Prevent instructors from removing themselves from the course
+    if (isAssignedInstructor && body.instructorIds && !body.instructorIds.includes(decoded.uid)) {
+      return NextResponse.json(
+        { error: "Cannot remove yourself from the course" },
+        { status: 400 }
+      );
+    }
     const parsed = updateCourseSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
