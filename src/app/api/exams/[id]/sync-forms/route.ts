@@ -53,18 +53,16 @@ export async function POST(
 
     const institution = instDoc.data()!;
     const adminEmail = institution.googleWorkspace?.adminEmail;
-    const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
 
-    if (!serviceAccountKey || !adminEmail) {
+    if (!adminEmail) {
       return NextResponse.json(
-        { error: "Google Workspace not configured" },
+        { error: "Google Workspace admin email not configured" },
         { status: 500 }
       );
     }
 
     // Fetch form responses
     const responses = await getFormResponses(
-      serviceAccountKey,
       adminEmail,
       exam.googleFormsConfig.formId
     );

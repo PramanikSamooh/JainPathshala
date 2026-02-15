@@ -3,11 +3,8 @@ import "server-only";
 import { google } from "googleapis";
 import { getGoogleAuthClient } from "./auth-client";
 
-export function getCalendarClient(
-  serviceAccountKey: string,
-  adminEmail: string
-) {
-  const auth = getGoogleAuthClient(serviceAccountKey, adminEmail, [
+export function getCalendarClient(adminEmail: string) {
+  const auth = getGoogleAuthClient(adminEmail, [
     "https://www.googleapis.com/auth/calendar.events",
   ]);
   return google.calendar({ version: "v3", auth });
@@ -17,7 +14,6 @@ export function getCalendarClient(
  * Create a Calendar event with an auto-generated Google Meet link.
  */
 export async function createMeetSession(
-  serviceAccountKey: string,
   adminEmail: string,
   params: {
     summary: string;
@@ -30,7 +26,7 @@ export async function createMeetSession(
     requestId: string; // Unique ID for idempotency
   }
 ) {
-  const calendar = getCalendarClient(serviceAccountKey, adminEmail);
+  const calendar = getCalendarClient(adminEmail);
 
   // Build attendee list: co-hosts (instructors) first, then students
   const attendees = [
@@ -79,11 +75,10 @@ export async function createMeetSession(
  * Delete a Calendar event by ID.
  */
 export async function deleteCalendarEvent(
-  serviceAccountKey: string,
   adminEmail: string,
   calendarEventId: string
 ) {
-  const calendar = getCalendarClient(serviceAccountKey, adminEmail);
+  const calendar = getCalendarClient(adminEmail);
   await calendar.events.delete({
     calendarId: adminEmail,
     eventId: calendarEventId,

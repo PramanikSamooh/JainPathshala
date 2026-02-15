@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase/admin";
 import { FieldValue } from "firebase-admin/firestore";
 import { createMeetSession, deleteCalendarEvent } from "@/lib/google/calendar";
+import { getServiceAccountCredentials } from "@/lib/google/auth-client";
 
 /**
  * GET /api/courses/:id/sessions
@@ -103,14 +104,13 @@ export async function POST(
     }
 
     const institution = instDoc.data()!;
-    const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
     const adminEmail = institution.googleWorkspace?.adminEmail;
 
     // Validate required credentials for auto-create platforms
     if (platform === "google_meet") {
-      if (!serviceAccountKey) {
+      if (!getServiceAccountCredentials()) {
         return NextResponse.json(
-          { error: "Google service account key is not configured. Contact your administrator." },
+          { error: "Google service account is not configured. Set GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY." },
           { status: 400 }
         );
       }
@@ -171,7 +171,7 @@ export async function POST(
     if (platform === "google_meet") {
       try {
         const tz = timeZone || "Asia/Kolkata";
-        const result = await createMeetSession(serviceAccountKey!, adminEmail!, {
+        const result = await createMeetSession(adminEmail!, {
           summary: `${course.title}: ${topic}`,
           description: `Bootcamp session for ${course.title}`,
           startTime: `${sessionDate}T${startTime}:00`,
@@ -341,13 +341,12 @@ export async function DELETE(
 
     // Delete Calendar event if it exists
     if (sessionData.calendarEventId) {
-      const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
       const instDoc = await db.collection("institutions").doc(course.institutionId).get();
       const adminEmail = instDoc.data()?.googleWorkspace?.adminEmail;
 
-      if (serviceAccountKey && adminEmail) {
+      if (getServiceAccountCredentials() && adminEmail) {
         try {
-          await deleteCalendarEvent(serviceAccountKey, adminEmail, sessionData.calendarEventId);
+          await deleteCalendarEvent(adminEmail, sessionData.calendarEventId);
         } catch (err) {
           console.error("Failed to delete calendar event:", err);
         }

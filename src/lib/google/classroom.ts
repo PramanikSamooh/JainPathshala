@@ -3,11 +3,8 @@ import "server-only";
 import { google } from "googleapis";
 import { getGoogleAuthClient } from "./auth-client";
 
-export function getClassroomClient(
-  serviceAccountKey: string,
-  adminEmail: string
-) {
-  const auth = getGoogleAuthClient(serviceAccountKey, adminEmail, [
+export function getClassroomClient(adminEmail: string) {
+  const auth = getGoogleAuthClient(adminEmail, [
     "https://www.googleapis.com/auth/classroom.courses",
     "https://www.googleapis.com/auth/classroom.rosters",
   ]);
@@ -18,13 +15,12 @@ export function getClassroomClient(
  * Create a Google Classroom course.
  */
 export async function createClassroomCourse(
-  serviceAccountKey: string,
   adminEmail: string,
   courseName: string,
   section: string,
   ownerEmail: string
 ) {
-  const classroom = getClassroomClient(serviceAccountKey, adminEmail);
+  const classroom = getClassroomClient(adminEmail);
   const response = await classroom.courses.create({
     requestBody: {
       name: courseName,
@@ -42,13 +38,12 @@ export async function createClassroomCourse(
  * For external users: creates an invitation instead.
  */
 export async function enrollStudentInClassroom(
-  serviceAccountKey: string,
   adminEmail: string,
   classroomCourseId: string,
   studentEmail: string,
   isExternal: boolean
 ) {
-  const classroom = getClassroomClient(serviceAccountKey, adminEmail);
+  const classroom = getClassroomClient(adminEmail);
 
   if (isExternal) {
     // External users (Gmail) need an invitation
@@ -76,12 +71,11 @@ export async function enrollStudentInClassroom(
  * Remove a student from a Google Classroom course.
  */
 export async function removeStudentFromClassroom(
-  serviceAccountKey: string,
   adminEmail: string,
   classroomCourseId: string,
   studentEmail: string
 ) {
-  const classroom = getClassroomClient(serviceAccountKey, adminEmail);
+  const classroom = getClassroomClient(adminEmail);
   await classroom.courses.students.delete({
     courseId: classroomCourseId,
     userId: studentEmail,

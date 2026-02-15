@@ -67,14 +67,13 @@ export async function POST(request: NextRequest) {
     const course = courseDoc.data()!;
     const institution = instDoc.data()!;
 
-    const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
     const adminEmail = institution.googleWorkspace?.adminEmail;
     const templateDocId = institution.settings?.certificateTemplateDocId;
     const certFolderId = institution.settings?.certificateFolderId;
 
-    if (!serviceAccountKey || !adminEmail) {
+    if (!adminEmail) {
       return NextResponse.json(
-        { error: "Google Workspace credentials not configured" },
+        { error: "Google Workspace admin email not configured" },
         { status: 500 }
       );
     }
@@ -101,7 +100,6 @@ export async function POST(request: NextRequest) {
 
     // Step 1: Copy template
     const copiedDoc = await copyDriveFile(
-      serviceAccountKey,
       adminEmail,
       templateDocId,
       `Certificate - ${user.displayName} - ${course.title}`,
@@ -111,7 +109,7 @@ export async function POST(request: NextRequest) {
     const newDocId = copiedDoc.id!;
 
     // Step 2: Merge template fields
-    await mergeDocTemplate(serviceAccountKey, adminEmail, newDocId, {
+    await mergeDocTemplate(adminEmail, newDocId, {
       STUDENT_NAME: user.displayName || user.email,
       COURSE_NAME: course.title,
       INSTITUTION_NAME: institution.name,
@@ -122,10 +120,10 @@ export async function POST(request: NextRequest) {
     });
 
     // Step 3: Export as PDF
-    const pdfBuffer = await exportAsPdf(serviceAccountKey, adminEmail, newDocId);
+    const pdfBuffer = await exportAsPdf(adminEmail, newDocId);
 
     // Step 4: Upload PDF to Drive
-    const pdfFile = await uploadToDrive(serviceAccountKey, adminEmail, {
+    const pdfFile = await uploadToDrive(adminEmail, {
       name: `${certificateId}.pdf`,
       mimeType: "application/pdf",
       content: Buffer.from(pdfBuffer),
@@ -133,7 +131,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Step 5: Make PDF publicly accessible
-    await setPublicViewAccess(serviceAccountKey, adminEmail, pdfFile.id!);
+    await setPublicViewAccess(adminEmail, pdfFile.id!);
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const publicVerificationUrl = `${appUrl}/verify/${certificateId}`;

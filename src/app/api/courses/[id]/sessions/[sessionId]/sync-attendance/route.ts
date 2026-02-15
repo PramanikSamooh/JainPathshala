@@ -119,16 +119,14 @@ export async function POST(
       syncSource = "Zoom";
     } else {
       // Google Meet attendance sync (default)
-      const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
       const adminEmail = institution.googleWorkspace?.adminEmail;
-      if (!serviceAccountKey || !adminEmail) {
+      if (!adminEmail) {
         return NextResponse.json(
-          { error: "Google credentials not configured" },
+          { error: "Google Workspace admin email not configured" },
           { status: 500 }
         );
       }
       attendance = await getMeetAttendance(
-        serviceAccountKey,
         adminEmail,
         sessionData.meetLink,
         sessionStartTime,

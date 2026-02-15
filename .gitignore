@@ -58,3 +58,5 @@ functions/lib/
 *.swp
 *.swo
 nul
+
+.env*.local

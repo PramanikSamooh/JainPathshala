@@ -3,11 +3,8 @@ import "server-only";
 import { google } from "googleapis";
 import { getGoogleAuthClient } from "./auth-client";
 
-export function getDriveClient(
-  serviceAccountKey: string,
-  adminEmail: string
-) {
-  const auth = getGoogleAuthClient(serviceAccountKey, adminEmail, [
+export function getDriveClient(adminEmail: string) {
+  const auth = getGoogleAuthClient(adminEmail, [
     "https://www.googleapis.com/auth/drive.file",
   ]);
   return google.drive({ version: "v3", auth });
@@ -17,13 +14,12 @@ export function getDriveClient(
  * Copy a Google Drive file (used for certificate template → new certificate).
  */
 export async function copyDriveFile(
-  serviceAccountKey: string,
   adminEmail: string,
   sourceFileId: string,
   newName: string,
   destinationFolderId?: string
 ) {
-  const drive = getDriveClient(serviceAccountKey, adminEmail);
+  const drive = getDriveClient(adminEmail);
 
   const response = await drive.files.copy({
     fileId: sourceFileId,
@@ -40,11 +36,10 @@ export async function copyDriveFile(
  * Export a Google Doc as PDF.
  */
 export async function exportAsPdf(
-  serviceAccountKey: string,
   adminEmail: string,
   fileId: string
 ) {
-  const drive = getDriveClient(serviceAccountKey, adminEmail);
+  const drive = getDriveClient(adminEmail);
 
   const response = await drive.files.export(
     { fileId, mimeType: "application/pdf" },
@@ -58,7 +53,6 @@ export async function exportAsPdf(
  * Upload a file to Google Drive.
  */
 export async function uploadToDrive(
-  serviceAccountKey: string,
   adminEmail: string,
   params: {
     name: string;
@@ -67,7 +61,7 @@ export async function uploadToDrive(
     folderId?: string;
   }
 ) {
-  const drive = getDriveClient(serviceAccountKey, adminEmail);
+  const drive = getDriveClient(adminEmail);
   const { Readable } = await import("stream");
 
   const response = await drive.files.create({
@@ -90,11 +84,10 @@ export async function uploadToDrive(
  * Set a file to "anyone with the link can view".
  */
 export async function setPublicViewAccess(
-  serviceAccountKey: string,
   adminEmail: string,
   fileId: string
 ) {
-  const drive = getDriveClient(serviceAccountKey, adminEmail);
+  const drive = getDriveClient(adminEmail);
 
   await drive.permissions.create({
     fileId,

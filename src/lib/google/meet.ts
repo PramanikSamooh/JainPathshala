@@ -3,8 +3,8 @@ import "server-only";
 import { google } from "googleapis";
 import { getGoogleAuthClient } from "./auth-client";
 
-function getMeetClient(serviceAccountKey: string, adminEmail: string) {
-  const auth = getGoogleAuthClient(serviceAccountKey, adminEmail, [
+function getMeetClient(adminEmail: string) {
+  const auth = getGoogleAuthClient(adminEmail, [
     "https://www.googleapis.com/auth/meetings.space.readonly",
   ]);
   return google.meet({ version: "v2", auth });
@@ -22,11 +22,10 @@ interface MeetParticipant {
  * Returns the most recent conference record for the meeting.
  */
 export async function getConferenceRecord(
-  serviceAccountKey: string,
   adminEmail: string,
   meetCode: string
 ): Promise<string | null> {
-  const meet = getMeetClient(serviceAccountKey, adminEmail);
+  const meet = getMeetClient(adminEmail);
 
   // List conference records filtered by space
   // Meet code format: xxx-xxxx-xxx or full URL
@@ -62,11 +61,10 @@ export async function getConferenceRecord(
  * Get participants from a conference record with their join/leave times.
  */
 export async function getMeetParticipants(
-  serviceAccountKey: string,
   adminEmail: string,
   conferenceRecordName: string
 ): Promise<MeetParticipant[]> {
-  const meet = getMeetClient(serviceAccountKey, adminEmail);
+  const meet = getMeetClient(adminEmail);
 
   const participants: MeetParticipant[] = [];
   let pageToken: string | undefined;
@@ -127,7 +125,6 @@ export async function getMeetParticipants(
  * Matches participants to enrolled students by email.
  */
 export async function getMeetAttendance(
-  serviceAccountKey: string,
   adminEmail: string,
   meetLink: string,
   sessionStartTime: string,
@@ -147,7 +144,6 @@ export async function getMeetAttendance(
     .trim();
 
   const conferenceRecordName = await getConferenceRecord(
-    serviceAccountKey,
     adminEmail,
     meetCode
   );
@@ -167,7 +163,6 @@ export async function getMeetAttendance(
   }
 
   const participants = await getMeetParticipants(
-    serviceAccountKey,
     adminEmail,
     conferenceRecordName
   );

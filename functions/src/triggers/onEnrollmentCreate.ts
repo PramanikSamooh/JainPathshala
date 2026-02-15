@@ -106,13 +106,8 @@ export const onEnrollmentCreate = functions.region("asia-south1").firestore
       const user = userDoc.data()!;
 
       // ─── Google Classroom enrollment ────────────────────
-      if (course.classroomCourseId && institution.googleWorkspace?.serviceAccountKeyRef) {
-        const serviceAccountKey =
-          process.env.GOOGLE_SERVICE_ACCOUNT_KEY ||
-          institution.googleWorkspace.serviceAccountKeyRef;
-
+      if (course.classroomCourseId && institution.googleWorkspace?.adminEmail) {
         const classroom = getClassroomClient(
-          serviceAccountKey,
           institution.googleWorkspace.adminEmail
         );
 
