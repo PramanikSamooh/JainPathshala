@@ -10,7 +10,7 @@ function getServiceAccountCredentials(): { client_email: string; private_key: st
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const privateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY;
   if (email && privateKey) {
-    return { client_email: email, private_key: privateKey };
+    return { client_email: email, private_key: privateKey.replace(/\\n/g, "\n") };
   }
 
   // Fallback to legacy JSON blob

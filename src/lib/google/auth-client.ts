@@ -13,7 +13,8 @@ export function getServiceAccountCredentials(): {
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const privateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY;
   if (!email || !privateKey) return null;
-  return { client_email: email, private_key: privateKey };
+  // Vercel stores \n as literal characters — convert to actual newlines
+  return { client_email: email, private_key: privateKey.replace(/\\n/g, "\n") };
 }
 
 /**
