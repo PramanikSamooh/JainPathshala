@@ -4,7 +4,7 @@
  * Usage: npx tsx scripts/seed.ts
  *
  * Seeds Firestore with:
- * - 1 institution (IFS)
+ * - 1 example institution
  * - 2 courses (1 free, 1 paid)
  * - 1 module with 2 lessons
  */
@@ -53,15 +53,15 @@ async function seed() {
   console.log("Seeding Firestore...\n");
 
   // 1. Create institution
-  const institutionId = "ifs";
+  const institutionId = process.env.NEXT_PUBLIC_DEFAULT_INSTITUTION_ID || "demo";
   console.log(`Creating institution: ${institutionId}`);
   await db.collection("institutions").doc(institutionId).set({
     id: institutionId,
-    name: "Institute of Financial Studies",
-    slug: "ifs",
-    domains: ["learn.ifsjaipur.com", "localhost"],
+    name: "Example Institution",
+    slug: institutionId,
+    domains: ["localhost"],
     primaryDomain: "localhost",
-    allowedEmailDomains: ["ifsjaipur.com"],
+    allowedEmailDomains: ["gmail.com"],
     branding: {
       logoUrl: "",
       faviconUrl: "",
@@ -69,8 +69,8 @@ async function seed() {
       secondaryColor: "#1E3A5F",
       accentColor: "#F59E0B",
       headerBgColor: "#FFFFFF",
-      footerText: "2026 Institute of Financial Studies",
-      institutionTagline: "Empowering Financial Education",
+      footerText: "Example Institution",
+      institutionTagline: "Empowering Education",
     },
     googleWorkspace: {
       customerDomain: "",
@@ -94,10 +94,10 @@ async function seed() {
       maintenanceMode: false,
     },
     contactInfo: {
-      supportEmail: "support@ifsjaipur.com",
-      phone: "9876543210",
-      address: "Mumbai, India",
-      website: "https://ifsjaipur.com",
+      supportEmail: "support@example.com",
+      phone: "",
+      address: "",
+      website: "https://example.com",
     },
     isActive: true,
     createdAt: FieldValue.serverTimestamp(),
@@ -106,16 +106,16 @@ async function seed() {
   console.log("  Done: Institution created\n");
 
   // 2. Create a free course
-  const courseId = "intro-financial-markets";
+  const courseId = "getting-started";
   console.log(`Creating course: ${courseId}`);
   await db.collection("courses").doc(courseId).set({
     id: courseId,
     institutionId,
-    title: "Introduction to Financial Markets",
-    slug: "intro-financial-markets",
+    title: "Getting Started",
+    slug: "getting-started",
     description:
-      "A comprehensive introduction to financial markets, covering stocks, bonds, derivatives, and market microstructure. Perfect for beginners looking to understand how markets work.",
-    shortDescription: "Learn the fundamentals of financial markets and trading",
+      "A sample course to help you explore the platform. This course demonstrates modules, lessons, and progress tracking.",
+    shortDescription: "Explore the platform with this sample course",
     thumbnailUrl: "",
     type: "self_paced",
     skillLevel: "beginner",
@@ -135,7 +135,7 @@ async function seed() {
     classroomCourseId: null,
     classroomInviteLink: null,
     instructorIds: [],
-    tags: ["finance", "markets", "beginner", "stocks"],
+    tags: ["sample", "getting-started", "beginner"],
     prerequisites: [],
     moduleOrder: ["module-1"],
     status: "published",
@@ -158,8 +158,8 @@ async function seed() {
     .set({
       id: moduleId,
       courseId,
-      title: "Module 1: What Are Financial Markets?",
-      description: "An overview of different types of financial markets",
+      title: "Module 1: Introduction",
+      description: "An overview of the platform and its features",
       order: 0,
       lessonOrder: ["lesson-1", "lesson-2"],
       isPublished: true,
@@ -179,11 +179,11 @@ async function seed() {
     .set({
       id: "lesson-1",
       type: "text",
-      title: "Introduction to Markets",
+      title: "Welcome to the Platform",
       order: 0,
       videoConfig: null,
       textContent:
-        "Financial markets are platforms where buyers and sellers trade financial instruments such as stocks, bonds, currencies, and derivatives.\n\n## Types of Financial Markets\n\n1. **Stock Markets** - Where shares of public companies are traded\n2. **Bond Markets** - Where debt securities are bought and sold\n3. **Forex Markets** - The largest market by volume, trading currencies\n4. **Derivatives Markets** - Futures, options, and swaps\n5. **Commodity Markets** - Trading physical goods like gold, oil, wheat",
+        "Welcome to the learning platform! This lesson demonstrates how text-based lessons work.\n\n## Features\n\n1. **Course Management** - Create and organize courses with modules and lessons\n2. **Video Learning** - Embed YouTube or Google Drive videos with progress tracking\n3. **Live Classes** - Schedule sessions with Google Meet or Zoom\n4. **Certificates** - Auto-generate certificates on completion\n5. **Payments** - Accept payments via Razorpay",
       resources: [],
       assignmentConfig: null,
       isPublished: true,
@@ -200,11 +200,11 @@ async function seed() {
     .set({
       id: "lesson-2",
       type: "text",
-      title: "How Stock Markets Work",
+      title: "Managing Your Courses",
       order: 1,
       videoConfig: null,
       textContent:
-        "Stock markets enable companies to raise capital by issuing shares to the public.\n\n## Key Concepts\n\n- **IPO** - When a company first offers shares to the public\n- **Market Makers** - Firms that provide liquidity\n- **Exchanges** - Platforms like NSE, BSE where trades happen\n- **Market Indices** - Benchmarks like NIFTY 50, SENSEX\n\n## Indian Stock Markets\n\n- **NSE** - Largest by volume\n- **BSE** - Asia's oldest exchange",
+        "As an instructor or admin, you can create and manage courses from the dashboard.\n\n## Course Types\n\n- **Self-Paced** - Students learn at their own speed\n- **Bootcamp** - Time-bound with scheduled sessions\n- **Instructor-Led** - Requires approved membership in the institution\n\n## Getting Started\n\n1. Navigate to the Admin or Instructor panel\n2. Create a new course with title, description, and pricing\n3. Add modules and lessons\n4. Publish the course",
       resources: [],
       assignmentConfig: null,
       isPublished: true,
@@ -213,16 +213,16 @@ async function seed() {
   console.log("  Done: 2 lessons created\n");
 
   // 5. Create a paid course
-  const paidCourseId = "advanced-trading-strategies";
+  const paidCourseId = "sample-paid-course";
   console.log(`Creating paid course: ${paidCourseId}`);
   await db.collection("courses").doc(paidCourseId).set({
     id: paidCourseId,
     institutionId,
-    title: "Advanced Trading Strategies",
-    slug: "advanced-trading-strategies",
+    title: "Sample Paid Course",
+    slug: "sample-paid-course",
     description:
-      "Master advanced trading techniques including technical analysis, algorithmic trading basics, risk management, and portfolio optimization strategies.",
-    shortDescription: "Advanced trading techniques for serious investors",
+      "This is a sample paid course to demonstrate the payment and enrollment flow. Replace with your own content.",
+    shortDescription: "A sample course with payment integration",
     thumbnailUrl: "",
     type: "self_paced",
     skillLevel: "advanced",
@@ -242,8 +242,8 @@ async function seed() {
     classroomCourseId: null,
     classroomInviteLink: null,
     instructorIds: [],
-    tags: ["trading", "advanced", "technical-analysis"],
-    prerequisites: ["intro-financial-markets"],
+    tags: ["sample", "paid", "demo"],
+    prerequisites: ["getting-started"],
     moduleOrder: [],
     status: "published",
     isVisible: true,
@@ -257,10 +257,10 @@ async function seed() {
   console.log("========================================");
   console.log("Seed complete!");
   console.log("");
-  console.log("Institution: Institute of Financial Studies (ifs)");
+  console.log(`Institution: Example Institution (${institutionId})`);
   console.log("Courses:");
-  console.log("  - Introduction to Financial Markets (free)");
-  console.log("  - Advanced Trading Strategies (Rs.999)");
+  console.log("  - Getting Started (free)");
+  console.log("  - Sample Paid Course (Rs.999)");
   console.log("");
   console.log("Next: run 'npm run dev' and open http://localhost:3000");
   console.log("========================================");

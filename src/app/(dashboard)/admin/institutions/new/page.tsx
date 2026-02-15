@@ -130,7 +130,7 @@ export default function NewInstitutionPage() {
                 value={form.name}
                 onChange={(e) => updateField("name", e.target.value)}
                 onBlur={(e) => updateField("name", trimWhitespace(e.target.value))}
-                placeholder="Institute of Financial Studies"
+                placeholder="Acme University"
                 className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
               />
             </div>
@@ -143,7 +143,7 @@ export default function NewInstitutionPage() {
                 onChange={(e) =>
                   updateField("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))
                 }
-                placeholder="ifs"
+                placeholder="acme"
                 className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
               />
             </div>
@@ -154,7 +154,7 @@ export default function NewInstitutionPage() {
                 required
                 value={form.primaryDomain}
                 onChange={(e) => updateField("primaryDomain", e.target.value)}
-                placeholder="learn.ifsjaipur.com"
+                placeholder="learn.example.com"
                 className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
               />
             </div>
@@ -167,7 +167,7 @@ export default function NewInstitutionPage() {
                 required
                 value={form.domains}
                 onChange={(e) => updateField("domains", e.target.value)}
-                placeholder="learn.ifsjaipur.com, ifsjaipur.com"
+                placeholder="learn.example.com, example.com"
                 className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
               />
             </div>
@@ -181,7 +181,7 @@ export default function NewInstitutionPage() {
                 required
                 value={form.allowedEmailDomains}
                 onChange={(e) => updateField("allowedEmailDomains", e.target.value)}
-                placeholder="ifsjaipur.com, gmail.com"
+                placeholder="example.com, gmail.com"
                 className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
               />
             </div>

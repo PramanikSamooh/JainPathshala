@@ -1,6 +1,6 @@
 {
-  "name": "GyanSetu — Learning Platform",
-  "short_name": "GyanSetu",
+  "name": "Learning Platform",
+  "short_name": "LMS",
   "description": "Google Workspace-Native Education Platform",
   "start_url": "/dashboard",
   "display": "standalone",

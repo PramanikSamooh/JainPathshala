@@ -42,7 +42,7 @@ if (admin.apps.length === 0) {
 const auth = admin.auth();
 const db = admin.firestore();
 
-const SUPER_ADMIN_EMAIL = "sachin@ifsjaipur.com";
+const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL || "admin@example.com";
 const DRY_RUN = process.argv.includes("--dry-run");
 
 // All top-level Firestore collections in the project

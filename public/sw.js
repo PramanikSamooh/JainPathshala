@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-const CACHE_NAME = "gyansetu-v1";
+const CACHE_NAME = "edu-platform-v1";
 const STATIC_ASSETS = ["/", "/dashboard", "/courses", "/login"];
 
 // Install — cache essential pages
@@ -45,7 +45,7 @@ self.addEventListener("fetch", (event) => {
 // Push notification handler
 self.addEventListener("push", (event) => {
   const data = event.data ? event.data.json() : {};
-  const { title = "GyanSetu", body = "You have a new notification", icon, url, tag } = data;
+  const { title = "Learning Platform", body = "You have a new notification", icon, url, tag } = data;
 
   event.waitUntil(
     self.registration.showNotification(title, {

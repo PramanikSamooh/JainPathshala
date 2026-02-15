@@ -132,7 +132,7 @@ export default async function VerifyCertificatePage({
 
         {/* Footer */}
         <div className="border-t border-gray-200 px-8 py-4 text-center text-xs text-gray-500">
-          Verified by GyanSetu Education Platform
+          Verified by {process.env.NEXT_PUBLIC_APP_NAME || "EduPlatform"}
         </div>
       </div>
     </main>

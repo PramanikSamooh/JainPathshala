@@ -5,7 +5,7 @@
  *   npx tsx scripts/set-admin-role.ts <email>
  *
  * Example:
- *   npx tsx scripts/set-admin-role.ts sachin@ifsjaipur.com
+ *   npx tsx scripts/set-admin-role.ts admin@example.com
  *
  * Reads Firebase credentials from .env.local.
  */

@@ -1,4 +1,4 @@
-export const APP_NAME = "GyanSetu";
+export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || "EduPlatform";
 
 export const DEFAULT_INSTITUTION_ID =
   process.env.NEXT_PUBLIC_DEFAULT_INSTITUTION_ID || "ifs";

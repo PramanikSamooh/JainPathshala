@@ -1,6 +1,11 @@
 /**
- * One-time script: Set googleWorkspace.adminEmail on the "ifs" institution doc.
- * Run with: npx tsx scripts/set-admin-email.ts
+ * One-time script: Set googleWorkspace.adminEmail on an institution doc.
+ *
+ * Usage:
+ *   npx tsx scripts/set-admin-email.ts <institutionId> <adminEmail> <serviceAccountEmail>
+ *
+ * Example:
+ *   npx tsx scripts/set-admin-email.ts demo admin@example.com sa@project.iam.gserviceaccount.com
  */
 import * as admin from "firebase-admin";
 import { readFileSync } from "fs";
@@ -35,17 +40,28 @@ admin.initializeApp({
 const db = admin.firestore();
 
 async function main() {
-  const institutionId = "ifs";
+  const institutionId = process.argv[2];
+  const adminEmailArg = process.argv[3];
+  const serviceAccountEmailArg = process.argv[4];
+
+  if (!institutionId || !adminEmailArg) {
+    console.error("Usage: npx tsx scripts/set-admin-email.ts <institutionId> <adminEmail> [serviceAccountEmail]");
+    console.error("Example: npx tsx scripts/set-admin-email.ts demo admin@example.com");
+    process.exit(1);
+  }
+
   const ref = db.collection("institutions").doc(institutionId);
-
-  await ref.update({
-    "googleWorkspace.adminEmail": "admin@ifsjaipur.com",
-    "googleWorkspace.serviceAccountEmail": "gyansetu-5ac34@appspot.gserviceaccount.com",
-    "googleWorkspace.clientId": "111579210018399755832",
+  const updateData: Record<string, unknown> = {
+    "googleWorkspace.adminEmail": adminEmailArg,
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
+  };
+  if (serviceAccountEmailArg) {
+    updateData["googleWorkspace.serviceAccountEmail"] = serviceAccountEmailArg;
+  }
 
-  console.log(`Updated institution "${institutionId}" with googleWorkspace.adminEmail = admin@ifsjaipur.com`);
+  await ref.update(updateData);
+
+  console.log(`Updated institution "${institutionId}" with googleWorkspace.adminEmail = ${adminEmailArg}`);
   process.exit(0);
 }
 

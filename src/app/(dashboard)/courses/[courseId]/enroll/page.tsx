@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { APP_NAME } from "@/lib/utils/constants";
 
 declare global {
   interface Window {
@@ -88,7 +89,7 @@ export default function EnrollPage() {
         amount: orderData.amount,
         currency: orderData.currency,
         order_id: orderData.orderId,
-        name: "GyanSetu",
+        name: APP_NAME,
         description: "Course Enrollment",
         handler: async (response: {
           razorpay_order_id: string;

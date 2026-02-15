@@ -1,15 +1,17 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
+const appName = process.env.NEXT_PUBLIC_APP_NAME || "EduPlatform";
+
 export const metadata: Metadata = {
-  title: "GyanSetu — Google Workspace Learning",
+  title: `${appName} — Learning Platform`,
   description:
     "A secure, scalable learning platform built on Google Workspace",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "GyanSetu",
+    title: appName,
   },
 };
 

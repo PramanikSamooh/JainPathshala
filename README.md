@@ -1,6 +1,6 @@
-# GyanSetu — Google Workspace-Native Education Platform
+# Google Workspace Education Platform
 
-A secure, scalable Learning Management System built on **Google Workspace** and **Firebase**, designed for Indian educational institutions. GyanSetu (meaning "Bridge of Knowledge") provides end-to-end course management, video-based learning, live class scheduling, payments, certifications, and multi-channel notifications — all from a single, white-label platform.
+A secure, scalable Learning Management System built on **Google Workspace** and **Firebase**. This open-source, white-label platform provides end-to-end course management, video-based learning, live class scheduling, payments, certifications, and multi-channel notifications — all from a single, multi-tenant deployment.
 
 ---
 
@@ -11,6 +11,7 @@ A secure, scalable Learning Management System built on **Google Workspace** and 
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
+- [White-Label & Customization](#white-label--customization)
 - [Environment Variables](#environment-variables)
 - [Deployment](#deployment)
 - [Screenshots](#screenshots)
@@ -366,6 +367,8 @@ GoogleWorkspaceEdu/
 
 ## Getting Started
 
+> **For detailed setup instructions, see [CONFIG.md](CONFIG.md).**
+
 ### Prerequisites
 
 - **Node.js** 20+ and **npm**
@@ -379,8 +382,8 @@ GoogleWorkspaceEdu/
 
 ```bash
 # Clone the repository
-git clone https://github.com/ifsjaipur/GyanSetu.git
-cd GyanSetu
+git clone <your-repo-url>
+cd GoogleWorkspaceEdu
 
 # Install dependencies
 npm install
@@ -389,7 +392,7 @@ npm install
 cd functions && npm install && cd ..
 
 # Copy environment file
-cp .env.example .env.local
+cp .env.local.example .env.local
 ```
 
 ### Development
@@ -406,56 +409,31 @@ Visit `http://localhost:3000` to access the application.
 
 ---
 
+## White-Label & Customization
+
+This platform is designed to be fully white-labeled and customized for any organization.
+
+- **Platform name** — Set `NEXT_PUBLIC_APP_NAME` in your environment variables to display your own platform name throughout the UI.
+- **Institution branding** — Each institution can configure its own logo, colors, tagline, and footer text via the admin panel (Admin > Institutions > Settings).
+- **Multi-institution support** — The platform supports multiple institutions simultaneously, each with its own branding, settings, and configuration. No code changes are required to add a new institution.
+- **Per-institution settings** — Self-registration, external user access, maintenance mode, locale, and more can be configured independently for each institution.
+
+---
+
 ## Environment Variables
 
-Create a `.env.local` file in the project root:
+Create a `.env.local` file in the project root (or copy from `.env.local.example`). The following environment variables are required:
 
-```env
-# Firebase Client SDK
-NEXT_PUBLIC_FIREBASE_API_KEY=
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
-NEXT_PUBLIC_FIREBASE_APP_ID=
-
-# Firebase Admin SDK (server-side only)
-FIREBASE_PROJECT_ID=
-FIREBASE_CLIENT_EMAIL=
-FIREBASE_PRIVATE_KEY=
-
-# Google Workspace Service Account
-GOOGLE_SERVICE_ACCOUNT_EMAIL=
-GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY=
-GOOGLE_WORKSPACE_ADMIN_EMAIL=
-
-# Razorpay
-RAZORPAY_KEY_ID=
-RAZORPAY_KEY_SECRET=
-RAZORPAY_WEBHOOK_SECRET=
-NEXT_PUBLIC_RAZORPAY_KEY_ID=
-
-# Web Push (VAPID)
-VAPID_PUBLIC_KEY=
-VAPID_PRIVATE_KEY=
-NEXT_PUBLIC_VAPID_PUBLIC_KEY=
-
-# WhatsApp Cloud API (optional)
-WHATSAPP_ACCESS_TOKEN=
-WHATSAPP_PHONE_NUMBER_ID=
-WHATSAPP_BUSINESS_ACCOUNT_ID=
-WHATSAPP_VERIFY_TOKEN=
-
-# Zoom (Server-to-Server OAuth)
-ZOOM_ACCOUNT_ID=
-ZOOM_CLIENT_ID=
-ZOOM_CLIENT_SECRET=
-ZOOM_WEBHOOK_SECRET=
-ZOOM_DEFAULT_USER_ID=me
-
-# App
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-```
+| Category | Variables |
+|----------|-----------|
+| **Firebase Client SDK** | `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`, `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`, `NEXT_PUBLIC_FIREBASE_APP_ID` |
+| **Firebase Admin SDK** | `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` |
+| **Google Workspace** | `GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`, `GOOGLE_WORKSPACE_ADMIN_EMAIL` |
+| **Razorpay** | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `NEXT_PUBLIC_RAZORPAY_KEY_ID` |
+| **Web Push (VAPID)** | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY` |
+| **WhatsApp (optional)** | `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_ACCOUNT_ID`, `WHATSAPP_VERIFY_TOKEN` |
+| **Zoom (optional)** | `ZOOM_ACCOUNT_ID`, `ZOOM_CLIENT_ID`, `ZOOM_CLIENT_SECRET`, `ZOOM_WEBHOOK_SECRET`, `ZOOM_DEFAULT_USER_ID` |
+| **App** | `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_APP_NAME` |
 
 ### Generating VAPID Keys
 
@@ -463,9 +441,13 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 npx web-push generate-vapid-keys
 ```
 
+> **For detailed explanations of each variable and step-by-step configuration, see [CONFIG.md](CONFIG.md).**
+
 ---
 
 ## Deployment
+
+> **For detailed step-by-step setup, see [CONFIG.md](CONFIG.md).**
 
 ### Vercel (Next.js)
 
@@ -537,7 +519,7 @@ firebase deploy --only firestore:rules
 - [ ] Discussion forums per course
 - [ ] Assignment submission with file uploads (Google Drive)
 - [ ] Batch enrollment via CSV upload
-- [ ] Multi-language support (Hindi, Kannada, Marathi)
+- [ ] Multi-language support
 - [ ] Mobile app (React Native / Capacitor)
 - [ ] AI-powered content recommendations
 - [ ] Plagiarism detection for assignments
@@ -546,8 +528,8 @@ firebase deploy --only firestore:rules
 
 ## License
 
-This project is proprietary software developed for the [Institute of Financial Studies, Jaipur](https://ifsjaipur.com). All rights reserved.
+This project is open-source under the [MIT License](LICENSE).
 
 ---
 
-Built with Next.js, Firebase, Google Workspace APIs, and Zoom API.
+Built with [Next.js](https://nextjs.org), [Firebase](https://firebase.google.com), [Google Workspace APIs](https://developers.google.com/workspace), and [Zoom API](https://developers.zoom.us).

@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signInWithGoogle, createSessionCookie } from "@/lib/firebase/auth";
+import { APP_NAME } from "@/lib/utils/constants";
 
 function LoginForm() {
   const [loading, setLoading] = useState(false);
@@ -31,7 +32,7 @@ function LoginForm() {
     <div className="w-full max-w-md rounded-xl bg-[var(--card)] p-8 shadow-lg">
       <div className="mb-8 text-center">
         <div className="mb-2 text-3xl font-bold text-[var(--brand-primary)]">
-          GyanSetu
+          {APP_NAME}
         </div>
         <h1 className="text-xl font-bold text-[var(--card-foreground)]">
           Welcome Back

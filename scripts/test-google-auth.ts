@@ -23,17 +23,22 @@ for (const line of envContent.split("\n")) {
   envVars[key] = val;
 }
 
-const serviceAccountKey = envVars.GOOGLE_SERVICE_ACCOUNT_KEY;
-if (!serviceAccountKey) {
-  console.error("GOOGLE_SERVICE_ACCOUNT_KEY not found in .env.local");
+const email = envVars.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+const privateKey = envVars.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, "\n");
+if (!email || !privateKey) {
+  console.error("GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY required in .env.local");
   process.exit(1);
 }
 
-const credentials = JSON.parse(serviceAccountKey);
-const adminEmail = "admin@ifsjaipur.com";
+const credentials = { client_email: email, private_key: privateKey };
+const adminEmail = envVars.GOOGLE_WORKSPACE_ADMIN_EMAIL || process.argv[2];
+if (!adminEmail) {
+  console.error("Set GOOGLE_WORKSPACE_ADMIN_EMAIL in .env.local or pass as argument");
+  process.exit(1);
+}
 
 async function testCalendar() {
-  console.log("--- Testing Calendar API (impersonating admin@ifsjaipur.com) ---");
+  console.log(`--- Testing Calendar API (impersonating ${adminEmail}) ---`);
   const auth = new google.auth.GoogleAuth({
     credentials,
     scopes: ["https://www.googleapis.com/auth/calendar.events"],
@@ -55,7 +60,7 @@ async function testCalendar() {
 }
 
 async function testDrive() {
-  console.log("--- Testing Drive API (impersonating admin@ifsjaipur.com) ---");
+  console.log(`--- Testing Drive API (impersonating ${adminEmail}) ---`);
   const auth = new google.auth.GoogleAuth({
     credentials,
     scopes: ["https://www.googleapis.com/auth/drive.file"],
@@ -68,14 +73,15 @@ async function testDrive() {
 }
 
 async function testAdminSDK() {
-  console.log("--- Testing Admin SDK (impersonating admin@ifsjaipur.com) ---");
+  console.log(`--- Testing Admin SDK (impersonating ${adminEmail}) ---`);
   const auth = new google.auth.GoogleAuth({
     credentials,
     scopes: ["https://www.googleapis.com/auth/admin.directory.user.readonly"],
     clientOptions: { subject: adminEmail },
   });
   const admin = google.admin({ version: "directory_v1", auth });
-  const res = await admin.users.list({ domain: "ifsjaipur.com", maxResults: 3 });
+  const domain = adminEmail.split("@")[1];
+  const res = await admin.users.list({ domain, maxResults: 3 });
   console.log(`  Users found: ${res.data.users?.length || 0}`);
   res.data.users?.forEach((u) => console.log(`    - ${u.name?.fullName} (${u.primaryEmail})`));
   console.log("  Admin SDK: OK\n");
@@ -83,7 +89,6 @@ async function testAdminSDK() {
 
 async function main() {
   console.log(`\nService Account: ${credentials.client_email}`);
-  console.log(`Client ID: ${credentials.client_id}`);
   console.log(`Impersonating: ${adminEmail}\n`);
 
   let passed = 0;
